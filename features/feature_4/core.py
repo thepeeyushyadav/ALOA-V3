@@ -8,7 +8,7 @@ warnings.filterwarnings("ignore")
 os.environ["GRPC_VERBOSITY"] = "ERROR"
 
 try:
-    import google.generativeai as genai
+    from google import genai
     from fpdf import FPDF
 
     # --- youtube-transcript-api v1.x (new instance-based API) ---
@@ -16,15 +16,15 @@ try:
 
 except ImportError as e:
     print(f"\n[CRITICAL ERROR] Library Missing: {e}")
-    print("Run: pip install google-generativeai youtube-transcript-api fpdf2")
+    print("Run: pip install google-genai youtube-transcript-api fpdf2")
     sys.exit()
 
 # Load Gemini API key from env var
 API_KEY = os.environ.get("GEMINI_API_KEY_1", "")
-genai.configure(api_key=API_KEY)
+client = genai.Client(api_key=API_KEY)
 
-# Model preference order (gemini-2.0-flash is stable and widely available)
-GEMINI_MODELS = ["gemini-2.0-flash", "gemini-flash-latest"]
+# Model preference order
+GEMINI_MODELS = ["gemini-3.6-flash"]
 
 # Create a reusable API instance (youtube-transcript-api v1.x)
 ytt_api = YouTubeTranscriptApi()
@@ -89,8 +89,10 @@ INSTRUCTIONS:
     last_error = None
     for model_name in GEMINI_MODELS:
         try:
-            model = genai.GenerativeModel(model_name)
-            response = model.generate_content(prompt)
+            response = client.models.generate_content(
+                model=model_name,
+                contents=prompt
+            )
             return response.text
         except Exception as e:
             last_error = e

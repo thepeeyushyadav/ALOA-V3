@@ -21,7 +21,7 @@ import subprocess
 warnings.filterwarnings("ignore")
 
 try:
-    import google.generativeai as genai
+    from google import genai
 except ImportError:
     genai = None
 
@@ -33,7 +33,7 @@ GEMINI_API_KEY_1 = os.environ.get("GEMINI_API_KEY_1", "")
 GEMINI_API_KEY_2 = os.environ.get("GEMINI_API_KEY_2", "")
 OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY", "")
 OPENROUTER_MODEL = "openrouter/auto"
-GEMINI_MODELS = ["gemini-2.0-flash", "gemini-flash-latest"]
+GEMINI_MODELS = ["gemini-3.6-flash"]
 
 # ══════════════════════════════════════════════════════════
 # DIRECTORIES
@@ -167,14 +167,20 @@ def _call_gemini(prompt, system_prompt=""):
         return None
 
     for key in [GEMINI_API_KEY_1, GEMINI_API_KEY_2]:
-        genai.configure(api_key=key)
+        try:
+            client = genai.Client(api_key=key)
+        except Exception:
+            continue
+        
         for model_name in GEMINI_MODELS:
             try:
-                model = genai.GenerativeModel(
-                    model_name,
-                    system_instruction=system_prompt if system_prompt else None
+                response = client.models.generate_content(
+                    model=model_name,
+                    contents=prompt,
+                    config=genai.types.GenerateContentConfig(
+                        system_instruction=system_prompt if system_prompt else None
+                    )
                 )
-                response = model.generate_content(prompt)
                 if response and response.text:
                     return response.text
             except Exception as e:

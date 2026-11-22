@@ -2,7 +2,7 @@ import cv2
 import numpy as np
 import pytesseract
 import mss
-import google.generativeai as genai
+from google import genai
 import json
 import time
 
@@ -21,10 +21,12 @@ if not API_KEYS:
     API_KEYS = [""]
 current_key_index = 0
 
+client = None
+
 def configure_genai():
-    global current_key_index
+    global current_key_index, client
     try:
-        genai.configure(api_key=API_KEYS[current_key_index])
+        client = genai.Client(api_key=API_KEYS[current_key_index])
     except: pass
 configure_genai()
 
@@ -69,24 +71,20 @@ def get_ai_answer(context_text):
     attempts = 0
     while attempts < max_retries:
         try:
-            model = genai.GenerativeModel('gemini-2.5-flash')
             prompt = f"""
             Quiz Solver. 
             TEXT: "{context_text}"
             FORMAT (Strict JSON): {{"correct_option_text": "Answer Text", "confidence": "High"}}
             """
-            response = model.generate_content(prompt)
+            response = client.models.generate_content(
+                model='gemini-3.6-flash',
+                contents=prompt
+            )
             clean_text = response.text.replace("```json", "").replace("```", "").strip()
             return json.loads(clean_text)
         except Exception as e:
             if "429" in str(e) or "quota" in str(e).lower():
                 rotate_api_key(); attempts += 1; time.sleep(1)
-            elif "404" in str(e):
-                try: 
-                    model = genai.GenerativeModel('gemini-1.5-flash')
-                    response = model.generate_content(prompt)
-                    return json.loads(response.text.replace("```json", "").replace("```", "").strip())
-                except: rotate_api_key(); attempts += 1
             else: return {"error": str(e)}
     return {"error": "Keys Exhausted"}
 

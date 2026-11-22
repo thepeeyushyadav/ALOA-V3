@@ -13,7 +13,7 @@ warnings.filterwarnings("ignore")
 os.environ["GRPC_VERBOSITY"] = "ERROR"
 
 try:
-    import google.generativeai as genai
+    from google import genai
 except ImportError as e:
     print(f"\n[CRITICAL ERROR] Library Missing: {e}")
     print("Run: pip install google-generativeai")
@@ -31,9 +31,7 @@ OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY", "")
 OPENROUTER_MODEL = "openrouter/auto"  # Auto-selects best available model
 
 # Configure Gemini with init key
-genai.configure(api_key=API_KEY_INIT)
-
-GEMINI_MODELS = ["gemini-2.0-flash", "gemini-flash-latest"]
+GEMINI_MODELS = ["gemini-3.6-flash"]
 
 # ──────────────────────────────────────────────────────────
 # File extensions recognized as source code
@@ -506,17 +504,23 @@ IMPORTANT RULES:
     def _init_chat(self, api_key=None):
         """Initialize (or re-initialize) the Gemini chat with a specific API key."""
         key = api_key or API_KEY_CHAT
-        genai.configure(api_key=key)
         self.model = None
         self.chat = None
         self._active_key = key
+        
+        try:
+            client = genai.Client(api_key=key)
+        except Exception:
+            return
+
         for model_name in GEMINI_MODELS:
             try:
-                self.model = genai.GenerativeModel(
-                    model_name,
-                    system_instruction=self.system_prompt
+                self.chat = client.chats.create(
+                    model=model_name,
+                    config=genai.types.GenerateContentConfig(
+                        system_instruction=self.system_prompt
+                    )
                 )
-                self.chat = self.model.start_chat(history=[])
                 break
             except Exception:
                 continue
