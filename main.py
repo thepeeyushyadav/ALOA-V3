@@ -35,7 +35,7 @@ def main():
         print("\n  Available Features:")
 
         print("  [1] App Manager (Open / Install / Uninstall)")
-        print("  [2] System Doctor (Health Check / Junk Clean)")
+        print("  [2] System Insights (Health Check / Junk Clean)")
         print("  [3] Attendance Automator 🎓 (Excel)")
         print("  [4] YouTube Note Generator 📝 (Video -> PDF)")
         print("  [5] Exam Pilot 🤖 (Quiz Automation)")

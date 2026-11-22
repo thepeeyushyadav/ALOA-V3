@@ -76,7 +76,7 @@ GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")  # Set your key here or in env
 llm = None
 if GROQ_API_KEY:
     try:
-        llm = ChatGroq(model="llama-3.1-8b-instant", temperature=0, api_key=GROQ_API_KEY)
+        llm = ChatGroq(model="llama-3.3-70b-versatile", temperature=0, api_key=GROQ_API_KEY)
     except Exception as e:
         print(f"[App Manager] Warning: Groq init failed: {e}")
 

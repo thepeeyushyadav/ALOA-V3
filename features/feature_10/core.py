@@ -241,7 +241,7 @@ def fetch_github_trending(limit=5):
         return repos
 
     soup = BeautifulSoup(r.text, "html.parser")
-    for card in soup.find_all("article", class_="Box-row")[:limit]:
+    for card in soup.find_all("article", class_="Box-row")[:int(limit)]:
         try:
             h2   = card.find("h2")
             link = h2.find("a") if h2 else None
@@ -276,6 +276,8 @@ def fetch_github_trending(limit=5):
 
 def fetch_reddit(subreddits=None, limit=5):
     """Hot non-stickied posts via Reddit's public JSON API."""
+    return []  # Bypassed due to Reddit API 403 blocks
+    
     posts = []
     for sub in (subreddits or ["programming"])[:3]:
         r = _get(f"https://www.reddit.com/r/{sub}/hot.json",
@@ -456,7 +458,7 @@ ABSOLUTE RULES:
 - Do not repeat section header names in the body text."""
 
         resp = client.chat.completions.create(
-            model="llama-3.1-8b-instant",
+            model="llama-3.3-70b-versatile",
             messages=[{"role": "user", "content": prompt}],
             max_tokens=600,
             temperature=0.6,

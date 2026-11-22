@@ -23,10 +23,10 @@ class DualModelChat:
         except Exception as e:
             err_str = str(e).lower()
             if "403" in err_str or "429" in err_str or "access denied" in err_str:
-                print(f"\n  [System Doctor] Groq API blocked by Network. Falling back to OpenRouter...")
+                print(f"\n  [System Insights] Groq API blocked by Network. Falling back to OpenRouter...")
                 return self.openrouter_fallback(prompt_text)
             else:
-                print(f"\n  [System Doctor] Groq Error: {e}. Falling back to OpenRouter...")
+                print(f"\n  [System Insights] Groq Error: {e}. Falling back to OpenRouter...")
                 return self.openrouter_fallback(prompt_text)
         return self.openrouter_fallback(prompt_text)
 
@@ -39,7 +39,7 @@ class DualModelChat:
             "Authorization": f"Bearer {key}",
             "Content-Type": "application/json",
             "HTTP-Referer": "https://aloa.local",
-            "X-Title": "ALOA System Doctor",
+            "X-Title": "ALOA System Insights",
         }
         body = json.dumps({
             "model": "openrouter/auto",
@@ -74,20 +74,20 @@ if GROQ_API_KEY:
     try:
         # Brain: Strict JSON output
         base_brain = ChatGroq(
-            model="llama-3.1-8b-instant",
+            model="llama-3.3-70b-versatile",
             temperature=0,
             api_key=GROQ_API_KEY
         )
         llm_brain = DualModelChat(base_brain, temperature=0.0)
         # Writer: Slightly creative
         base_writer = ChatGroq(
-            model="llama-3.1-8b-instant",
+            model="llama-3.3-70b-versatile",
             temperature=0.3,
             api_key=GROQ_API_KEY
         )
         llm_writer = DualModelChat(base_writer, temperature=0.3)
     except Exception as e:
-        print(f"[System Doctor] Warning: Groq init failed: {e}")
+        print(f"[System Insights] Warning: Groq init failed: {e}")
         llm_brain = DualModelChat(None, temperature=0.0)
         llm_writer = DualModelChat(None, temperature=0.3)
 else:
