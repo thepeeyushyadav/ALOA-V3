@@ -1,0 +1,171 @@
+@import url("https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Caveat:wght@400;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─── Custom blend mode override for hero background video ─── */
+.video-plus-darker {
+  mix-blend-mode: normal !important;
+}
+
+/* ─── Hero wrapper: full viewport on mobile, fixed height on desktop ─── */
+.app-hero-wrapper {
+  min-height: 100vh;
+  overflow: hidden;
+}
+
+@media (min-width: 768px) {
+  .app-hero-wrapper {
+    min-height: auto;
+    height: 100vh;
+  }
+}
+
+/* ─── Hero description group: desktop right-margin offset ─── */
+.hero-description-group {
+  margin-right: 0;
+}
+
+/* ─── Hero stat group: desktop right-margin offset ─── */
+.hero-stat-group {
+  margin-right: 0;
+  justify-content: flex-start;
+}
+
+@media (min-width: 768px) {
+  .hero-description-group {
+    margin-right: 50%;
+  }
+
+  .hero-stat-group {
+    margin-right: 20%;
+    justify-content: center;
+  }
+}
+
+/* ─── Smooth scroll behaviour ─── */
+html {
+  scroll-behavior: smooth;
+}
+
+/* ─── Remove default button/input outlines, keep focus visible for a11y ─── */
+button:focus-visible,
+a:focus-visible,
+input:focus-visible {
+  outline: 2px solid rgba(99, 102, 241, 0.7);
+  outline-offset: 2px;
+}
+
+/* ─── Hide internal scrollbars completely while keeping smooth scroll ─── */
+.no-scrollbar::-webkit-scrollbar,
+textarea::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+.no-scrollbar,
+textarea {
+  -ms-overflow-style: none !important;
+  scrollbar-width: none !important;
+}
+
+/* ══════════════════════════════════════════════════════════
+   SpecularButton — React Bits WebGL2 specular edge component
+   ══════════════════════════════════════════════════════════ */
+
+.specular-button {
+  --sb-radius: 18px;
+  --sb-tint: #ffffff;
+  --sb-tint-opacity: 0.04;
+  --sb-blur: 0px;
+  --sb-text-color: #f5f5f5;
+
+  position: relative !important;
+  isolation: isolate !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  overflow: visible;
+  gap: 0.5em;
+  margin: 0;
+  border: 0 !important;
+  border-radius: var(--sb-radius) !important;
+  font: inherit;
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: 0.01em;
+  color: var(--sb-text-color) !important;
+  background: color-mix(
+    in srgb,
+    var(--sb-tint) calc(var(--sb-tint-opacity) * 100%),
+    transparent
+  ) !important;
+  box-shadow: 0 10px 24px -14px rgba(0, 0, 0, 0.45);
+  -webkit-backdrop-filter: blur(var(--sb-blur));
+  backdrop-filter: blur(var(--sb-blur));
+  cursor: pointer !important;
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.specular-button:active {
+  transform: scale(0.97);
+}
+
+.specular-button:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--sb-text-color) 55%, transparent);
+  outline-offset: 3px;
+}
+
+.specular-button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.specular-button:disabled:active {
+  transform: none;
+}
+
+.specular-button--sm {
+  padding: 10px 20px !important;
+  font-size: 0.875rem !important;
+}
+
+.specular-button--md {
+  padding: 14px 28px !important;
+  font-size: 1rem !important;
+}
+
+.specular-button--lg {
+  padding: 18px 38px !important;
+  font-size: 1.125rem !important;
+}
+
+.specular-button__light {
+  position: absolute !important;
+  inset: -24px !important;
+  z-index: 1 !important;
+  display: block !important;
+  width: calc(100% + 48px) !important;
+  height: calc(100% + 48px) !important;
+  pointer-events: none !important;
+}
+
+.specular-button__label {
+  position: relative !important;
+  z-index: 2 !important;
+  display: inline-flex !important;
+  align-items: center;
+  gap: inherit;
+}
+
+/* ─── Hide scrollbar utility ─── */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}

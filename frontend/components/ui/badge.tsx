@@ -1,0 +1,33 @@
+import * as React from "react";
+import { cn } from "@/lib/utils";
+
+export interface BadgeProps extends React.HTMLAttributes<HTMLDivElement> {
+  variant?: "default" | "secondary" | "destructive" | "outline" | "theme";
+}
+
+function Badge({ className, variant = "default", ...props }: BadgeProps) {
+  const variantStyles = {
+    default:
+      "bg-[#101828] text-white hover:bg-black border-transparent shadow-xs",
+    secondary:
+      "bg-[#F2F4F7] text-[#344054] hover:bg-[#EAECF0] border-transparent",
+    destructive:
+      "bg-red-500 text-white hover:bg-red-600 border-transparent",
+    outline: "border border-[#EAECF0] text-[#344054] bg-white",
+    theme:
+      "bg-gradient-to-r from-[#4D4B76]/10 to-[#9072A3]/15 border border-[#9072A3]/25 text-[#4D4B76]",
+  };
+
+  return (
+    <div
+      className={cn(
+        "inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+        variantStyles[variant] || variantStyles.default,
+        className
+      )}
+      {...props}
+    />
+  );
+}
+
+export { Badge };
