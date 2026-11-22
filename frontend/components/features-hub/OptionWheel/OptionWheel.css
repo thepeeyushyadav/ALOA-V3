@@ -1,0 +1,23 @@
+/* OptionWheel.css - React Bits OptionWheel core styling */
+.option-wheel-root {
+  user-select: none;
+  -webkit-user-select: none;
+  overflow: hidden;
+  outline: none;
+  touch-action: none;
+}
+
+.option-wheel-item {
+  position: absolute;
+  top: 50%;
+  cursor: pointer;
+  white-space: nowrap;
+  line-height: 1;
+  will-change: transform, opacity, filter;
+  font-size: var(--ow-font-size);
+  color: color-mix(
+    in srgb,
+    var(--ow-active-color) calc(var(--ow-p, 0) * 100%),
+    var(--ow-text-color)
+  );
+}
