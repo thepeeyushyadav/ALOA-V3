@@ -2,8 +2,14 @@ import os
 import re
 import subprocess
 import tempfile
-import tkinter as tk
-from tkinter import messagebox
+try:
+    import tkinter as tk
+    from tkinter import messagebox
+    _TKINTER_AVAILABLE = True
+except (ImportError, ModuleNotFoundError):
+    tk = None
+    messagebox = None
+    _TKINTER_AVAILABLE = False
 from langchain_groq import ChatGroq
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
@@ -221,17 +227,19 @@ if (-not $found) {
 
 def get_user_confirmation(command):
     """User se permission lene ke liye popup"""
-    try:
-        root = tk.Tk()
-        root.withdraw()
-        root.attributes("-topmost", True)
-        response = messagebox.askyesno("ALOA Agent", f"Execute this command?\n\n{command}")
-        root.destroy()
-        return response
-    except Exception:
-        # Fallback to CLI if tkinter fails
-        ans = input(f"\n  Execute this command?\n  >>> {command}\n  (y/n): ").strip().lower()
-        return ans == "y"
+    if _TKINTER_AVAILABLE and tk and messagebox:
+        try:
+            root = tk.Tk()
+            root.withdraw()
+            root.attributes("-topmost", True)
+            response = messagebox.askyesno("ALOA Agent", f"Execute this command?\n\n{command}")
+            root.destroy()
+            return response
+        except Exception:
+            pass
+    # Fallback to CLI if tkinter fails or unavailable
+    ans = input(f"\n  Execute this command?\n  >>> {command}\n  (y/n): ").strip().lower()
+    return ans == "y"
 
 
 def launch_app(app_name):

@@ -89,28 +89,61 @@ def create_empty_profile():
 # ══════════════════════════════════════════════════════════
 
 def save_profile(profile, filename=None):
-    """Save profile to JSON file. Returns the file path."""
+    """Save profile to JSON file safely without path traversal. Returns the file path."""
     ensure_dirs()
-    if not filename:
+    if filename:
+        if ".." in filename or "/" in filename or "\\" in filename:
+            raise ValueError("Invalid filename: Path traversal detected")
+        clean_name = os.path.basename(filename)
+        clean_name = re.sub(r'[^a-zA-Z0-9_\-\.]', '', clean_name)
+        if not clean_name:
+            clean_name = "untitled_resume"
+        filename = clean_name
+    else:
         name = profile.get("personal", {}).get("full_name", "untitled").strip()
         name = re.sub(r'[^a-zA-Z0-9_\- ]', '', name).replace(' ', '_').lower()
         filename = f"{name}_resume.json" if name else "untitled_resume.json"
+
     if not filename.endswith(".json"):
         filename += ".json"
-    path = os.path.join(PROFILES_DIR, filename)
-    with open(path, 'w', encoding='utf-8') as f:
+
+    resolved_path = os.path.abspath(os.path.join(PROFILES_DIR, filename))
+    canonical_root = os.path.realpath(os.path.abspath(PROFILES_DIR))
+    canonical_target = os.path.realpath(resolved_path)
+    try:
+        if os.path.commonpath([canonical_root, canonical_target]) != canonical_root:
+            raise ValueError("Invalid filename: Path traversal detected")
+    except Exception:
+        raise ValueError("Invalid filename: Path traversal detected")
+
+    with open(canonical_target, 'w', encoding='utf-8') as f:
         json.dump(profile, f, indent=2, ensure_ascii=False)
-    return path
+    return canonical_target
 
 
 def load_profile(filename):
-    """Load profile from JSON file."""
-    if not filename.endswith(".json"):
-        filename += ".json"
-    path = os.path.join(PROFILES_DIR, filename)
-    if not os.path.isfile(path):
+    """Load profile from JSON file safely without path traversal."""
+    if not filename:
         return None
-    with open(path, 'r', encoding='utf-8') as f:
+    if ".." in filename or "/" in filename or "\\" in filename:
+        raise ValueError("Invalid filename: Path traversal detected")
+    clean_name = os.path.basename(filename)
+    clean_name = re.sub(r'[^a-zA-Z0-9_\-\.]', '', clean_name)
+    if not clean_name.endswith(".json"):
+        clean_name += ".json"
+
+    resolved_path = os.path.abspath(os.path.join(PROFILES_DIR, clean_name))
+    canonical_root = os.path.realpath(os.path.abspath(PROFILES_DIR))
+    canonical_target = os.path.realpath(resolved_path)
+    try:
+        if os.path.commonpath([canonical_root, canonical_target]) != canonical_root:
+            return None
+    except Exception:
+        return None
+
+    if not os.path.isfile(canonical_target):
+        return None
+    with open(canonical_target, 'r', encoding='utf-8') as f:
         return json.load(f)
 
 

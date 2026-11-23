@@ -5,11 +5,11 @@ services:
     region: oregon
     plan: free
     branch: development/aloa-v3
-    buildCommand: pip install -r requirements.txt
+    buildCommand: pip install -r requirements-cloud.txt
     startCommand: uvicorn backend.server:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /api/health
     envVars:
       - key: PYTHON_VERSION
         value: 3.10.12
       - key: ALLOWED_ORIGINS
-        value: https://aloav3.com,https://www.aloav3.com,http://localhost:3000,http://127.0.0.1:3000
+        value: https://aloav3.com,https://www.aloav3.com,https://aloa-v3-github.vercel.app,http://localhost:3000,http://127.0.0.1:3000

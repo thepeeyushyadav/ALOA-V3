@@ -22,6 +22,10 @@ from aloa_agent.actions import (
     handle_system_cleanup,
     handle_process_kill,
     handle_browse_folder,
+    handle_code_healer_scan,
+    handle_code_healer_run,
+    handle_code_healer_apply,
+    handle_code_healer_read_file,
 )
 
 logger = logging.getLogger("aloa.agent_client")
@@ -174,6 +178,39 @@ class AgentClient:
                     if not approved:
                         return {"success": False, "error": f"Termination of {proc_name} was denied by the local user."}
                 return handle_process_kill(payload)
+
+            # 6. Code Healer - Project Scan
+            elif action in ("CODE_HEALER_SCAN", "CH_SCAN"):
+                return handle_code_healer_scan(payload)
+
+            # 7. Code Healer - Project Run (Requires local user consent)
+            elif action in ("CODE_HEALER_RUN", "CH_RUN"):
+                cmd = payload.get("run_command", "")
+                folder = payload.get("folder", "")
+                if self.ui:
+                    approved = self.ui.ask_approval(
+                        "Code Execution",
+                        f"ALOA Web requested to run project:\n'{cmd}'\nin folder:\n'{folder}'"
+                    )
+                    if not approved:
+                        return {"success": False, "error": "Project execution was denied by the local user."}
+                return handle_code_healer_run(payload)
+
+            # 8. Code Healer - Apply Patch (Requires local user consent)
+            elif action in ("CODE_HEALER_APPLY", "CH_APPLY"):
+                fix_file = payload.get("fix_file", "")
+                if self.ui:
+                    approved = self.ui.ask_approval(
+                        "Code Healer Patch",
+                        f"ALOA Web requested to apply code fix to file:\n'{fix_file}'"
+                    )
+                    if not approved:
+                        return {"success": False, "error": f"Patch application to {fix_file} was denied by the local user."}
+                return handle_code_healer_apply(payload)
+
+            # 9. Code Healer - Read File for Diff
+            elif action in ("CODE_HEALER_READ_FILE", "CH_READ_FILE"):
+                return handle_code_healer_read_file(payload)
 
             else:
                 return {"success": False, "error": f"Unknown or unsupported local action: {action}"}

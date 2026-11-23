@@ -10,6 +10,7 @@ import sys
 import re
 import json
 import uuid
+import secrets
 import subprocess
 import asyncio
 import urllib.request
@@ -105,6 +106,17 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+def is_cloud_environment() -> bool:
+    """Return True if running in a cloud/containerized backend (e.g. Render, Railway, Docker, or non-Windows)."""
+    if os.environ.get("ALOA_CLOUD_MODE", "").lower() in ("true", "1", "yes"):
+        return True
+    if os.environ.get("RENDER") or os.environ.get("RAILWAY_ENVIRONMENT"):
+        return True
+    if sys.platform != "win32":
+        return True
+    return False
+
+
 # ── Device Pairing Endpoints & WebSocket Tunnel ────────────────────────────────
 class PairDeviceRequest(BaseModel):
     session_id: str
@@ -113,11 +125,20 @@ class PairDeviceRequest(BaseModel):
 @app.websocket("/ws/agent")
 async def websocket_agent_endpoint(websocket: WebSocket):
     """WebSocket tunnel for the ALOA Windows Companion Agent."""
+    origin = websocket.headers.get("origin")
+    # If a browser Origin header is present, verify against allowed_origins to prevent CSWSH
+    if origin and origin not in allowed_origins:
+        await websocket.close(code=1008, reason="Unauthorized origin")
+        return
+
     await websocket.accept()
     agent_id = None
     try:
         handshake_raw = await websocket.receive_text()
         metadata = json.loads(handshake_raw)
+        if not isinstance(metadata, dict):
+            await websocket.close(code=1003, reason="Invalid handshake payload")
+            return
         agent_id, pairing_code = await device_manager.register_agent(websocket, metadata)
         await websocket.send_json({
             "type": "REGISTERED",
@@ -146,6 +167,15 @@ async def device_status(session_id: str = ""):
     """Check if browser session has an active, connected Windows laptop."""
     agent_info = device_manager.get_agent_for_session(session_id) if session_id else None
     if not agent_info:
+        if is_cloud_environment():
+            return {
+                "online": False,
+                "agent_id": None,
+                "hostname": None,
+                "os": None,
+                "is_local": False,
+                "message": "No companion agent connected. Please launch ALOA Companion Agent on your Windows PC and pair using the code."
+            }
         import platform
         return {
             "online": True,
@@ -158,7 +188,8 @@ async def device_status(session_id: str = ""):
         "online": True,
         "agent_id": agent_info["agent_id"],
         "hostname": agent_info["hostname"],
-        "os": agent_info["os"]
+        "os": agent_info["os"],
+        "is_local": False
     }
 
 # â”€â”€ Request models â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -371,7 +402,7 @@ async def execute(req: ExecuteRequest):
                 return
 
             # Standalone Local Mode Fallback
-            if sys.platform != "win32":
+            if sys.platform != "win32" or is_cloud_environment():
                 yield sse({"type":"step","index":1,"status":"error",
                            "message":"Device Not Connected",
                            "detail":"Please connect your ALOA Windows Companion Agent to run software actions on your computer."})
@@ -544,31 +575,105 @@ async def system_doctor_scan(session_id: Optional[str] = None):
     }
 
 
+PROHIBITED_PROCESSES = {
+    "python.exe", "python", "uvicorn.exe", "uvicorn", "powershell.exe",
+    "cmd.exe", "explorer.exe", "system", "registry", "smss.exe",
+    "csrss.exe", "wininit.exe", "services.exe", "lsass.exe"
+}
+
+
 class KillRequest(BaseModel):
     process_name: str
+    session_id: Optional[str] = None
+
 
 @app.post("/api/system-doctor/kill")
 async def system_doctor_kill(req: KillRequest):
-    """Kill a process by name. Returns friendly result."""
+    """Kill a process by name. Dispatches to paired companion agent or runs locally with security constraints."""
+    proc_name = req.process_name.strip()
+    if not proc_name:
+        raise HTTPException(status_code=400, detail="process_name cannot be empty.")
+
+    # Prevent killing protected/critical server and system processes
+    if proc_name.lower() in PROHIBITED_PROCESSES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Terminating protected process '{proc_name}' is not allowed for security reasons."
+        )
+
+    # Route to paired Windows laptop if online
+    if req.session_id:
+        agent_info = device_manager.get_agent_for_session(req.session_id)
+        if agent_info:
+            res = await device_manager.dispatch_action(
+                req.session_id, "KILL_PROCESS", {"process_name": proc_name}, timeout_sec=20
+            )
+            success = res.get("success", False)
+            return {
+                "success": success,
+                "message": f"{proc_name} has been stopped on {agent_info.get('hostname')}" if success
+                           else f"Could not stop {proc_name}: {res.get('error', 'Denied or failed')}",
+                "detail": "Terminated remotely via paired ALOA Companion Agent" if success
+                          else res.get("error", "Process could not be terminated"),
+                "is_remote_agent": True,
+            }
+
+    # If cloud backend without companion agent, disallow direct process termination
+    if is_cloud_environment():
+        raise HTTPException(
+            status_code=403,
+            detail="Process termination is disabled in cloud deployments without a paired ALOA Companion Agent."
+        )
+
+    # Local execution
     loop = asyncio.get_event_loop()
-    result = await loop.run_in_executor(None, kill_specific_process, req.process_name)
+    result = await loop.run_in_executor(None, kill_specific_process, proc_name)
     success = "SUCCESS" in result or "Terminated" in result
     return {
         "success": success,
-        "message": f"{req.process_name} has been stopped" if success
-                   else f"Could not stop {req.process_name}",
+        "message": f"{proc_name} has been stopped" if success
+                   else f"Could not stop {proc_name}",
         "detail":  "Process ended successfully" if success
                    else "It may already be closed or needs admin access",
     }
 
 
+class CleanupRequest(BaseModel):
+    session_id: Optional[str] = None
+
+
 @app.post("/api/system-doctor/cleanup")
-async def system_doctor_cleanup():
-    """Clean junk files â€” streams friendly SSE progress steps."""
+async def system_doctor_cleanup(req: Optional[CleanupRequest] = None):
+    """Clean junk files — streams friendly SSE progress steps, routing to companion agent if paired."""
+    session_id = req.session_id if req else None
+
     async def stream() -> AsyncGenerator[str, None]:
         loop = asyncio.get_event_loop()
-        word_count = 0
         try:
+            # Check paired companion
+            if session_id:
+                agent_info = device_manager.get_agent_for_session(session_id)
+                if agent_info:
+                    yield sse({"type": "step", "index": 0, "status": "active",
+                               "message": f"Dispatching cleanup to {agent_info.get('hostname')}...", "detail": "Waiting for local user approval"})
+                    res = await device_manager.dispatch_action(session_id, "SYSTEM_CLEANUP", {}, timeout_sec=60)
+                    if res.get("success"):
+                        yield sse({"type": "step", "index": 1, "status": "done",
+                                   "message": "Remote cleanup finished!", "detail": "Temp files cleared on companion"})
+                        yield sse({"type": "done", "message": f"System cleaned successfully on {agent_info.get('hostname')} 🎉"})
+                    else:
+                        yield sse({"type": "error", "message": "Cleanup denied or failed", "detail": res.get("error", "Failed")})
+                    return
+
+            # If cloud backend without companion agent, reject
+            if is_cloud_environment():
+                yield sse({
+                    "type": "error",
+                    "message": "Cleanup disabled in cloud mode",
+                    "detail": "Connect your ALOA Windows Companion Agent to perform system cleanup on your device."
+                })
+                return
+
             yield sse({"type": "step", "index": 0, "status": "done",
                        "message": "Cleanup approved", "detail": "Starting junk removal"})
             await asyncio.sleep(0.3)
@@ -581,7 +686,7 @@ async def system_doctor_cleanup():
                        "message": "Junk cleared!", "detail": "Temp files and recycle bin emptied"})
             await asyncio.sleep(0.2)
 
-            yield sse({"type": "done", "message": "System cleaned successfully ðŸŽ‰"})
+            yield sse({"type": "done", "message": "System cleaned successfully 🎉"})
 
         except Exception as e:
             yield sse({"type": "error", "message": "Cleanup failed", "detail": str(e)})
@@ -625,6 +730,9 @@ def _get_cloud_workspace(session_id: str) -> str:
     return os.path.join(base, session_id)
 
 
+GITHUB_REPO_REGEX = re.compile(r"^https://github\.com/[a-zA-Z0-9_\-\.]+/[a-zA-Z0-9_\-\.]+(?:\.git)?/?$")
+
+
 @app.post("/api/cloud-healer/connect")
 async def cloud_connect(req: CloudConnectRequest):
     """Clone repo + create CloudHealerAgent session. Returns session_id + file tree."""
@@ -632,6 +740,12 @@ async def cloud_connect(req: CloudConnectRequest):
     pat = req.pat.strip()
     if not repo_url or not pat:
         raise HTTPException(status_code=400, detail="repo_url and pat are required.")
+
+    if not GITHUB_REPO_REGEX.match(repo_url):
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid GitHub repository URL. Must match standard https://github.com/owner/repo format."
+        )
 
     session_id = uuid.uuid4().hex
     dest_folder = _get_cloud_workspace(session_id)
@@ -914,6 +1028,20 @@ async def cloud_apply(req: CloudApplyRequest):
     meta  = _cloud_meta.get(req.session_id)
     if not agent or not meta:
         raise HTTPException(status_code=404, detail="Session not found.")
+
+    # Validate pending_file against path traversal
+    if agent.pending_file:
+        clean_file = os.path.normpath(agent.pending_file)
+        if clean_file.startswith("..") or os.path.isabs(clean_file):
+            raise HTTPException(status_code=400, detail="Invalid file path in pending fix.")
+        canonical_folder = os.path.realpath(os.path.abspath(meta["folder"]))
+        target_abs = os.path.abspath(os.path.join(canonical_folder, clean_file))
+        canonical_target = os.path.realpath(target_abs)
+        try:
+            if os.path.commonpath([canonical_folder, canonical_target]) != canonical_folder:
+                raise HTTPException(status_code=400, detail="Target fix path escapes workspace.")
+        except Exception:
+            raise HTTPException(status_code=400, detail="Target fix path escapes workspace.")
 
     # Ensure parent directory exists (handles new-file creation case)
     if agent.pending_file and agent.pending_new_content:
@@ -1301,11 +1429,19 @@ def yt_history():
 
 @app.get("/api/youtube-notes/download/{filename}")
 def yt_download(filename: str):
-    safe = re.sub(r"[^a-zA-Z0-9_\-\.]", "", filename)
-    path = os.path.join(NOTES_DIR, safe)
-    if not os.path.exists(path):
+    safe = os.path.basename(filename)
+    safe = re.sub(r"[^a-zA-Z0-9_\-\.]", "", safe)
+    if not safe or not safe.lower().endswith(".pdf"):
+        raise HTTPException(status_code=400, detail="Invalid PDF filename requested.")
+    canonical_notes = os.path.realpath(os.path.abspath(NOTES_DIR))
+    target_abs = os.path.abspath(os.path.join(canonical_notes, safe))
+    canonical_target = os.path.realpath(target_abs)
+    try:
+        if os.path.commonpath([canonical_notes, canonical_target]) != canonical_notes or not os.path.exists(canonical_target):
+            raise HTTPException(status_code=404, detail="File not found")
+    except Exception:
         raise HTTPException(status_code=404, detail="File not found")
-    return FileResponse(path, media_type="application/pdf", filename=safe)
+    return FileResponse(canonical_target, media_type="application/pdf", filename=safe)
 
 
 @app.post("/api/youtube-notes/generate")
@@ -1442,6 +1578,7 @@ _ch_agents: dict[str, ALOAAgent] = {}
 
 class CHScanRequest(BaseModel):
     folder: str
+    session_id: Optional[str] = None
 
 class CHRunRequest(BaseModel):
     folder: str
@@ -1521,10 +1658,26 @@ def _compute_diff(original: str, fixed: str, filename: str) -> list:
 
 
 @app.get("/api/code-healer/browse-folder")
-async def ch_browse_folder():
-    """Open native Windows folder picker dialog via PowerShell, return selected path."""
+async def ch_browse_folder(session_id: Optional[str] = None):
+    """Open native Windows folder picker dialog via PowerShell (local) or dispatch to paired companion (cloud)."""
     import features.feature_6.core as _f6
     _f6.GEMINI_MODELS = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"]
+
+    # If paired companion session is provided, dispatch to companion
+    if session_id:
+        agent_info = device_manager.get_agent_for_session(session_id)
+        if agent_info:
+            res = await device_manager.dispatch_action(session_id, "BROWSE_FOLDER", {}, timeout_sec=120)
+            if res.get("success"):
+                return {"path": res.get("result", {}).get("path", ""), "cancelled": False}
+            return {"path": "", "cancelled": True, "error": res.get("error")}
+
+    if is_cloud_environment():
+        return {
+            "path": "",
+            "cancelled": True,
+            "message": "Native folder browser is disabled in cloud deployments without a paired ALOA Companion Agent."
+        }
 
     def _run_picker():
         # Use PowerShell WinForms dialog — works even when uvicorn has no display context
@@ -1556,12 +1709,55 @@ async def ch_browse_folder():
 
 @app.post("/api/code-healer/scan")
 async def ch_scan(req: CHScanRequest):
-    """Scan a project folder and return metadata + create an agent session."""
+    """Scan a project folder and return metadata + create an agent session (supports local or companion device)."""
+    folder = req.folder.strip()
+    if not folder:
+        raise HTTPException(status_code=400, detail="folder is required.")
+
+    # 1. Route to paired Windows laptop if online
+    if req.session_id:
+        agent_info = device_manager.get_agent_for_session(req.session_id)
+        if agent_info:
+            res = await device_manager.dispatch_action(
+                req.session_id, "CODE_HEALER_SCAN", {"folder": folder}, timeout_sec=60
+            )
+            if not res.get("success"):
+                raise HTTPException(status_code=400, detail=res.get("error", "Failed to scan folder on laptop."))
+
+            data = res.get("result", {})
+            remote_session_id = secrets.token_hex(16)
+            agent = ALOAAgent(
+                folder_path=data.get("folder", folder),
+                source_files=data.get("source_files", []),
+                proj_type=data.get("project_type", "unknown"),
+                run_command=data.get("run_command", "")
+            )
+            agent.is_remote = True
+            agent.paired_session_id = req.session_id
+            _ch_agents[remote_session_id] = agent
+
+            return {
+                "session_id": remote_session_id,
+                "project_type": data.get("project_type", "unknown"),
+                "file_count": data.get("file_count", 0),
+                "run_command": data.get("run_command", ""),
+                "entry_point": data.get("entry_point", ""),
+                "file_tree": data.get("file_tree", []),
+                "is_remote": True,
+                "agent_hostname": agent_info.get("hostname"),
+            }
+
+    # 2. Cloud environment guard: block direct host filesystem scanning if not paired
+    if is_cloud_environment():
+        raise HTTPException(
+            status_code=403,
+            detail="Direct local code scanning is disabled on cloud deployments. Run locally or connect via companion agent."
+        )
+
     import features.feature_6.core as _f6
     # Patch wrong model name in the core module (can't modify core.py directly)
     _f6.GEMINI_MODELS = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"]
 
-    folder = req.folder.strip()
     if not os.path.isdir(folder):
         raise HTTPException(status_code=400, detail=f"Folder not found: {folder}")
 
@@ -1573,9 +1769,11 @@ async def ch_scan(req: CHScanRequest):
     )
     file_tree = await loop.run_in_executor(None, _build_file_tree, folder)
 
-    # Create agent session
-    session_id = uuid.uuid4().hex
+    # Create local agent session
+    session_id = secrets.token_hex(16)
     agent = ALOAAgent(folder, source_files, proj_type, run_command or "")
+    agent.is_remote = False
+    agent.paired_session_id = req.session_id
     _ch_agents[session_id] = agent
 
     return {
@@ -1585,26 +1783,76 @@ async def ch_scan(req: CHScanRequest):
         "run_command": run_command or "",
         "entry_point": os.path.relpath(entry, folder) if entry else "",
         "file_tree": file_tree,
+        "is_remote": False,
     }
 
 
 @app.post("/api/code-healer/run")
 async def ch_run(req: CHRunRequest):
-    """Run the project and stream output via SSE."""
+    """Run the project and stream output via SSE (supports paired companion and secured local execution)."""
+    # Validate session authorization
+    if not req.session_id or req.session_id not in _ch_agents:
+        raise HTTPException(
+            status_code=401,
+            detail="Unauthorized or invalid session_id. Scan the project folder first to authorize execution."
+        )
+
+    agent = _ch_agents[req.session_id]
+    cmd = (req.run_command or agent.run_command or "").strip()
+    if not cmd:
+        raise HTTPException(status_code=400, detail="run_command is required.")
+    agent.run_command = cmd
+
+    # Branch A: Dispatched to Windows Companion Agent
+    if getattr(agent, "is_remote", False) and agent.paired_session_id:
+        async def remote_stream() -> AsyncGenerator[str, None]:
+            yield sse({"type": "step", "message": "Dispatching to your laptop...", "detail": f"Running: {cmd}"})
+            res = await device_manager.dispatch_action(
+                agent.paired_session_id,
+                "CODE_HEALER_RUN",
+                {"folder": agent.folder_path, "run_command": cmd},
+                timeout_sec=120
+            )
+            if not res.get("success"):
+                yield sse({"type": "error_found", "output": "", "error_text": res.get("error", "Local execution failed"), "message": "Failed to run project on companion device"})
+                return
+
+            result = res.get("result", {})
+            proj_ok = result.get("project_success", False)
+            out = result.get("output", "")
+            err = result.get("stderr", "") or result.get("output", "")
+            if proj_ok:
+                yield sse({"type": "success", "output": out, "message": "Project ran successfully on your laptop", "is_server": result.get("is_server", False)})
+            else:
+                yield sse({"type": "error_found", "output": out, "error_text": err, "message": "Error detected during project run"})
+
+        return StreamingResponse(remote_stream(), media_type="text/event-stream",
+                                 headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+
+    # Branch B: Direct execution (forbidden on cloud without paired companion)
+    if is_cloud_environment():
+        raise HTTPException(
+            status_code=403,
+            detail="Direct project execution is disabled on cloud deployments without a paired ALOA Companion Agent."
+        )
+
     folder = req.folder.strip()
     if not os.path.isdir(folder):
         raise HTTPException(status_code=400, detail="Folder not found")
 
-    agent = _ch_agents.get(req.session_id)
-    if agent and req.run_command:
-        agent.run_command = req.run_command
+    # Ensure requested execution folder matches the folder authorized during scan
+    if os.path.normpath(folder) != os.path.normpath(agent.folder_path):
+        raise HTTPException(
+            status_code=403,
+            detail="Folder mismatch: execution path does not match the scanned session workspace."
+        )
 
-    async def stream() -> AsyncGenerator[str, None]:
+    async def local_stream() -> AsyncGenerator[str, None]:
         loop = asyncio.get_event_loop()
-        yield sse({"type": "step", "message": "Starting project...", "detail": f"Running: {req.run_command}"})
+        yield sse({"type": "step", "message": "Starting project...", "detail": f"Running: {agent.run_command}"})
         try:
             success, stdout, stderr, is_server = await loop.run_in_executor(
-                None, execute_project, folder, req.run_command
+                None, execute_project, folder, agent.run_command
             )
             combined_output = (stdout + "\n" + stderr).strip()
             if success:
@@ -1618,7 +1866,7 @@ async def ch_run(req: CHRunRequest):
             yield sse({"type": "error_found", "output": "", "error_text": str(e),
                        "message": "Failed to run project"})
 
-    return StreamingResponse(stream(), media_type="text/event-stream",
+    return StreamingResponse(local_stream(), media_type="text/event-stream",
                              headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
 
 
@@ -1651,15 +1899,25 @@ Use the FIX_FILE and FIXED_CODE format."""
                            "explanation": response})
                 return
 
-            # Read original file for diff
-            fix_path = os.path.join(agent.folder_path, fix_file)
+            # Read original file for diff (dispatched to companion if remote)
             original_code = ""
-            if os.path.isfile(fix_path):
-                try:
-                    with open(fix_path, 'r', encoding='utf-8', errors='ignore') as f:
-                        original_code = f.read()
-                except:
-                    pass
+            if getattr(agent, "is_remote", False) and agent.paired_session_id:
+                res = await device_manager.dispatch_action(
+                    agent.paired_session_id,
+                    "CODE_HEALER_READ_FILE",
+                    {"folder": agent.folder_path, "file_path": fix_file},
+                    timeout_sec=15
+                )
+                if res.get("success"):
+                    original_code = res.get("result", {}).get("content", "")
+            else:
+                fix_path = os.path.join(agent.folder_path, fix_file)
+                if os.path.isfile(fix_path):
+                    try:
+                        with open(fix_path, 'r', encoding='utf-8', errors='ignore') as f:
+                            original_code = f.read()
+                    except Exception:
+                        pass
 
             diff = _compute_diff(original_code, fixed_code, fix_file)
 
@@ -1682,10 +1940,44 @@ Use the FIX_FILE and FIXED_CODE format."""
 
 @app.post("/api/code-healer/apply")
 async def ch_apply(req: CHApplyRequest):
-    """Apply the last AI fix to the file."""
+    """Apply the last AI fix to the file (dispatches to companion agent if remote or applies locally)."""
+    if not req.session_id or req.session_id not in _ch_agents:
+        raise HTTPException(status_code=401, detail="Unauthorized or invalid session_id.")
+
     agent = _ch_agents.get(req.session_id)
-    if not agent:
-        raise HTTPException(status_code=404, detail="Session not found.")
+    if not agent.last_fix_file or not agent.last_fix_code:
+        raise HTTPException(status_code=400, detail="No fix available to apply.")
+
+    # Branch A: Dispatched to Windows Companion Agent
+    if getattr(agent, "is_remote", False) and agent.paired_session_id:
+        res = await device_manager.dispatch_action(
+            agent.paired_session_id,
+            "CODE_HEALER_APPLY",
+            {
+                "folder": agent.folder_path,
+                "fix_file": agent.last_fix_file,
+                "fixed_code": agent.last_fix_code,
+            },
+            timeout_sec=45
+        )
+        if not res.get("success"):
+            raise HTTPException(status_code=400, detail=res.get("error", "Failed to apply fix on companion device."))
+        result = res.get("result", {})
+        backup_file = result.get("backup_file", (agent.last_fix_file or "") + ".bak")
+        return {
+            "success": True,
+            "message": result.get("message", "Fix applied successfully"),
+            "fix_file": agent.last_fix_file,
+            "backup_file": backup_file,
+            "is_remote": True,
+        }
+
+    # Branch B: Direct execution (forbidden on cloud without paired companion)
+    if is_cloud_environment():
+        raise HTTPException(
+            status_code=403,
+            detail="Direct file modifications via Code Healer are disabled on cloud deployments without a paired companion."
+        )
 
     loop = asyncio.get_event_loop()
     success, message = await loop.run_in_executor(None, agent.apply_fix)
@@ -1693,8 +1985,13 @@ async def ch_apply(req: CHApplyRequest):
         raise HTTPException(status_code=400, detail=message)
 
     backup_file = (agent.last_fix_file or "") + ".bak"
-    return {"success": True, "message": message, "fix_file": agent.last_fix_file,
-            "backup_file": backup_file}
+    return {
+        "success": True,
+        "message": message,
+        "fix_file": agent.last_fix_file,
+        "backup_file": backup_file,
+        "is_remote": False,
+    }
 
 
 @app.post("/api/code-healer/chat")
@@ -1758,6 +2055,8 @@ async def resume_list_profiles():
 @app.get("/api/resume/profile/{filename}")
 async def resume_load_profile(filename: str):
     """Load a specific resume profile by filename."""
+    if ".." in filename or "/" in filename or "\\" in filename:
+        raise HTTPException(status_code=400, detail="Invalid profile filename: path traversal not allowed.")
     profile = load_profile(filename)
     if profile is None:
         raise HTTPException(status_code=404, detail="Profile not found.")
@@ -1767,8 +2066,13 @@ async def resume_load_profile(filename: str):
 @app.post("/api/resume/save")
 async def resume_save_profile(req: ResumeSaveRequest):
     """Save a resume profile to disk."""
-    path = save_profile(req.profile, req.filename)
-    return {"success": True, "path": str(path)}
+    if ".." in req.filename or "/" in req.filename or "\\" in req.filename:
+        raise HTTPException(status_code=400, detail="Invalid profile filename: path traversal not allowed.")
+    try:
+        path = save_profile(req.profile, req.filename)
+        return {"success": True, "path": str(path)}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @app.post("/api/resume/brain-dump")

@@ -250,3 +250,171 @@ def handle_browse_folder(payload: Dict[str, Any] = None) -> Dict[str, Any]:
         return {"success": True, "path": folder or ""}
     except Exception as e:
         return {"success": False, "error": str(e), "path": ""}
+
+
+def is_safe_path(base_dir: str, target_path: str) -> bool:
+    """Ensure target_path resolves strictly within base_dir (prevents traversal, sibling-prefix, and symlink escapes)."""
+    try:
+        canonical_base = os.path.realpath(os.path.abspath(base_dir))
+        canonical_target = os.path.realpath(os.path.abspath(target_path))
+        return os.path.commonpath([canonical_base, canonical_target]) == canonical_base
+    except Exception:
+        return False
+
+
+def handle_code_healer_scan(payload: Dict[str, Any]) -> Dict[str, Any]:
+    """Scans user's local project folder via Companion Agent."""
+    from features.feature_6.core import (
+        scan_source_files,
+        detect_project_type,
+        auto_detect_run_command,
+        SKIP_DIRS,
+        SOURCE_EXTENSIONS,
+    )
+    folder = payload.get("folder", "").strip()
+    if not folder or not os.path.isdir(folder):
+        return {"success": False, "error": f"Folder not found: {folder}"}
+
+    canonical_folder = os.path.realpath(os.path.abspath(folder))
+
+    source_files = scan_source_files(canonical_folder)
+    proj_type, default_cmd = detect_project_type(canonical_folder)
+    run_command, entry = auto_detect_run_command(canonical_folder, source_files, proj_type, default_cmd)
+
+    # Build simplified file tree
+    tree = []
+    folder_name = os.path.basename(canonical_folder)
+    tree.append({"name": folder_name, "type": "dir", "depth": 0, "path": ""})
+    for root, dirs, files in os.walk(canonical_folder):
+        dirs[:] = sorted([d for d in dirs if d not in SKIP_DIRS])
+        depth = os.path.relpath(root, canonical_folder).count(os.sep) + 1
+        if depth > 3:
+            continue
+        for d in dirs:
+            rel = os.path.relpath(os.path.join(root, d), canonical_folder)
+            tree.append({"name": d, "type": "dir", "depth": depth, "path": rel})
+        for f in sorted(files):
+            ext = os.path.splitext(f)[1].lower()
+            if ext in SOURCE_EXTENSIONS:
+                rel = os.path.relpath(os.path.join(root, f), canonical_folder)
+                tree.append({"name": f, "type": "file", "depth": depth, "path": rel, "ext": ext})
+
+    rel_sources = [os.path.relpath(f, canonical_folder) for f in source_files[:100]]
+
+    return {
+        "success": True,
+        "folder": canonical_folder,
+        "project_type": proj_type,
+        "file_count": len(source_files),
+        "run_command": run_command or "",
+        "entry_point": os.path.relpath(entry, canonical_folder) if entry else "",
+        "file_tree": tree[:60],
+        "source_files": rel_sources,
+    }
+
+
+def handle_code_healer_run(payload: Dict[str, Any]) -> Dict[str, Any]:
+    """Executes the local project using execute_project."""
+    from features.feature_6.core import execute_project
+
+    folder = payload.get("folder", "").strip()
+    run_command = payload.get("run_command", "").strip()
+    if not folder or not os.path.isdir(folder):
+        return {"success": False, "error": f"Folder not found: {folder}"}
+    if not run_command:
+        return {"success": False, "error": "run_command is required"}
+
+    canonical_folder = os.path.realpath(os.path.abspath(folder))
+
+    try:
+        success, stdout, stderr, is_server = execute_project(canonical_folder, run_command)
+        combined_output = (stdout + "\n" + stderr).strip()
+        return {
+            "success": True,
+            "project_success": success,
+            "output": combined_output,
+            "stdout": stdout,
+            "stderr": stderr,
+            "is_server": is_server,
+        }
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+def handle_code_healer_apply(payload: Dict[str, Any]) -> Dict[str, Any]:
+    """Applies patch to local file with strict canonical path containment."""
+    folder = payload.get("folder", "").strip()
+    fix_file = payload.get("fix_file", "").strip()
+    fixed_code = payload.get("fixed_code", "")
+
+    if not folder or not os.path.isdir(folder):
+        return {"success": False, "error": f"Invalid project folder: {folder}"}
+    if not fix_file:
+        return {"success": False, "error": "fix_file is required"}
+
+    canonical_folder = os.path.realpath(os.path.abspath(folder))
+    clean_rel = os.path.normpath(fix_file)
+    if clean_rel.startswith("..") or os.path.isabs(clean_rel):
+        return {"success": False, "error": "Path traversal rejected."}
+
+    target_abs = os.path.abspath(os.path.join(canonical_folder, clean_rel))
+    if not is_safe_path(canonical_folder, target_abs):
+        return {"success": False, "error": "Path traversal or symlink escape detected."}
+
+    # Ensure parent directory exists
+    parent = os.path.dirname(target_abs)
+    if parent and not os.path.isdir(parent):
+        os.makedirs(parent, exist_ok=True)
+
+    # Backup existing file if present
+    backup_file = clean_rel + ".bak"
+    if os.path.isfile(target_abs):
+        try:
+            backup_abs = target_abs + ".bak"
+            if not os.path.exists(backup_abs):
+                shutil.copy2(target_abs, backup_abs)
+        except Exception:
+            pass
+
+    try:
+        with open(target_abs, "w", encoding="utf-8") as f:
+            f.write(fixed_code)
+        return {
+            "success": True,
+            "message": f"Successfully applied fix to {fix_file}",
+            "fix_file": fix_file,
+            "backup_file": backup_file,
+        }
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+def handle_code_healer_read_file(payload: Dict[str, Any]) -> Dict[str, Any]:
+    """Safely reads file content within project directory for diff computation."""
+    folder = payload.get("folder", "").strip()
+    file_path = payload.get("file_path", "").strip()
+
+    if not folder or not os.path.isdir(folder):
+        return {"success": False, "error": "Invalid project folder"}
+    if not file_path:
+        return {"success": False, "error": "file_path is required"}
+
+    canonical_folder = os.path.realpath(os.path.abspath(folder))
+    clean_rel = os.path.normpath(file_path)
+    if clean_rel.startswith("..") or os.path.isabs(clean_rel):
+        return {"success": False, "error": "Path traversal detected."}
+
+    target_abs = os.path.abspath(os.path.join(canonical_folder, clean_rel))
+    if not is_safe_path(canonical_folder, target_abs):
+        return {"success": False, "error": "Path traversal detected."}
+
+    if not os.path.isfile(target_abs):
+        return {"success": True, "content": ""}
+
+    try:
+        # Limit read size to 1MB
+        with open(target_abs, "r", encoding="utf-8", errors="ignore") as f:
+            content = f.read(1024 * 1024)
+        return {"success": True, "content": content}
+    except Exception as e:
+        return {"success": False, "error": str(e)}

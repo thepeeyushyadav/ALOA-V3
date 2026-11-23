@@ -628,19 +628,32 @@ IMPORTANT RULES:
         return None, None
 
     def apply_fix(self):
-        """Apply the last suggested fix."""
+        """Apply the last suggested fix with strict path traversal containment."""
         if not self.last_fix_file or not self.last_fix_code:
             return False, "No fix available to apply."
 
-        fix_path = os.path.join(self.folder_path, self.last_fix_file)
-        if not os.path.isfile(fix_path):
+        # Path traversal guard
+        clean_rel = os.path.normpath(self.last_fix_file)
+        if clean_rel.startswith("..") or os.path.isabs(clean_rel):
+            return False, f"Path traversal rejected: '{self.last_fix_file}' is outside project directory."
+
+        canonical_root = os.path.realpath(os.path.abspath(self.folder_path))
+        target_abs = os.path.abspath(os.path.join(canonical_root, clean_rel))
+        canonical_target = os.path.realpath(target_abs)
+        try:
+            if os.path.commonpath([canonical_root, canonical_target]) != canonical_root:
+                return False, "Path traversal rejected: Cannot write outside project folder."
+        except Exception:
+            return False, "Path traversal rejected: Invalid target path."
+
+        if not os.path.isfile(target_abs):
             return False, f"File '{self.last_fix_file}' not found."
 
         try:
-            backup_path = fix_path + ".bak"
+            backup_path = target_abs + ".bak"
             if not os.path.exists(backup_path):
-                shutil.copy2(fix_path, backup_path)
-            with open(fix_path, 'w', encoding='utf-8') as f:
+                shutil.copy2(target_abs, backup_path)
+            with open(target_abs, 'w', encoding='utf-8') as f:
                 f.write(self.last_fix_code)
             return True, f"Fixed '{self.last_fix_file}' successfully. Backup saved as .bak"
         except Exception as e:
