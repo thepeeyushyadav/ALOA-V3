@@ -1,771 +1,609 @@
-# 🧠 THE ALOA — Autonomous Laptop Operating Agent
+<div align="center">
 
-> **A** utonomous **L** aptop **O** perating **A** gent
+  <img src="./assets/logo/aloa-v3-logo-dark.png" alt="ALOA V3 Logo" width="340" style="border-radius: 12px; margin-bottom: 20px;" />
+
+  # THE ALOA V3 — Autonomous Laptop Operating Agent
+  ### *Your Laptop. Run by an Agent.*
+
+  <p align="center">
+    <strong>A production-grade, hybrid autonomous operating system agent that perceives intent, reasons across a multi-model resilient AI backbone, and executes directly on your operating system and the cloud.</strong>
+  </p>
+
+  <p align="center">
+    <a href="https://aloav3.com"><img src="https://img.shields.io/badge/Website-aloav3.com-0A0A0A?style=for-the-badge&logo=vercel&logoColor=white" alt="Website" /></a>
+    <a href="https://github.com/thepeeyushyadav/THE-ALOA"><img src="https://img.shields.io/badge/GitHub-Repository-181717?style=for-the-badge&logo=github&logoColor=white" alt="GitHub" /></a>
+    <a href="https://nextjs.org"><img src="https://img.shields.io/badge/Frontend-Next.js%2014%20App%20Router-000000?style=for-the-badge&logo=next.js&logoColor=white" alt="Next.js 14" /></a>
+    <a href="https://fastapi.tiangolo.com"><img src="https://img.shields.io/badge/Backend-FastAPI%20%2B%20Uvicorn-009688?style=for-the-badge&logo=fastapi&logoColor=white" alt="FastAPI" /></a>
+    <a href="https://www.python.org"><img src="https://img.shields.io/badge/Python-3.10%20%7C%203.11-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="Python" /></a>
+    <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge" alt="License: MIT" /></a>
+  </p>
+
+</div>
 
 ---
 
-## What is ALOA?
+## 📌 Table of Contents
 
-**THE ALOA** is a fully autonomous, AI-powered desktop assistant that orchestrates **10 distinct automations** — each solving a real-world problem through intelligent agent loops, multi-model AI fallbacks, and direct OS-level control.
-
-It is **not** a chatbot. It is an **agent** — a system that **perceives** its environment, **decides** what to do, and **acts** on your behalf.
-
-> [!IMPORTANT]
-> ALOA stands for **"Autonomous Laptop Operating Agent"** — an intelligent AI agent that lives on your laptop, understands your operating system, and autonomously performs complex tasks that would otherwise require manual human efforts.
+- [1. Executive Summary & Vision](#1-executive-summary--vision)
+- [2. Visual Showcase & Interface](#2-visual-showcase--interface)
+- [3. Hybrid Architecture & How It Works](#3-hybrid-architecture--how-it-works)
+  - [3.1 Web Frontend Architecture (Next.js 14)](#31-web-frontend-architecture-nextjs-14)
+  - [3.2 Cloud Backend Architecture (FastAPI & SSE)](#32-cloud-backend-architecture-fastapi--sse)
+  - [3.3 Windows Companion Agent Architecture](#33-windows-companion-agent-architecture)
+  - [3.4 Security & Zero-Trust Governance](#34-security--zero-trust-governance)
+- [4. The 10 Core Automations (Deep Dive)](#4-the-10-core-automations-deep-dive)
+  - [Feature 01: App Manager](#feature-01-app-manager)
+  - [Feature 02: System Doctor](#feature-02-system-doctor)
+  - [Feature 03: Attendance Automator](#feature-03-attendance-automator)
+  - [Feature 04: YouTube Smart Notes](#feature-04-youtube-smart-notes)
+  - [Feature 05: Exam Pilot](#feature-05-exam-pilot)
+  - [Feature 06: Code Healer](#feature-06-code-healer)
+  - [Feature 07: Cloud Healer](#feature-07-cloud-healer)
+  - [Feature 08: Auto-Deployer](#feature-08-auto-deployer)
+  - [Feature 09: Resume Engine](#feature-09-resume-engine)
+  - [Feature 10: ALOA Radar](#feature-10-aloa-radar)
+- [5. Installation & Setup Guide](#5-installation--setup-guide)
+- [6. Deployment Architecture (Vercel & Render)](#6-deployment-architecture-vercel--render)
+- [7. Development Team & Attribution](#7-development-team--attribution)
+- [8. Contact & Community](#8-contact--community)
 
 ---
 
-## 🏗️ Architecture At A Glance
+## 1. Executive Summary & Vision
+
+**THE ALOA V3** (**A**utonomous **L**aptop **O**perating **A**gent) is a next-generation agentic desktop operating platform. Unlike conventional chatbots that simply generate conversational text, ALOA is built around an autonomous closed-loop paradigm:
+
+$$\text{Perceive Intent} \longrightarrow \text{Multi-Model Reasoning} \longrightarrow \text{OS/Cloud Execution} \longrightarrow \text{Feedback \& Self-Correction}$$
+
+ALOA unifies 10 specialized automation engines into a single synchronized ecosystem. Whether it is self-healing broken source code, triaging Windows system vitals, auto-marking institutional attendance in Excel, or generating ATS-grade resumes, ALOA bridges the gap between natural language intention and deterministic operating system actions.
+
+### 📊 Repository Key Metrics
+
+| Metric | Specification |
+| :--- | :--- |
+| **System Architecture** | Hybrid (Vercel Cloud Edge + Render Backend + Local Windows Companion Agent) |
+| **Frontend Framework** | Next.js 14 (App Router), React 18, TypeScript, Tailwind CSS |
+| **Backend Framework** | FastAPI (Python 3.10+), Uvicorn ASGI, Server-Sent Events (SSE), WebSockets |
+| **AI Orchestration Backbone** | Groq (Llama 3.3 70B), Google Gemini (2.5 Flash / 2.0 Flash), AWS Bedrock, OpenRouter |
+| **Supported OS** | Windows 10 / Windows 11 (Desktop Agent) & All Modern Browsers (Web GUI) |
+| **Active Core Modules** | **10 Dedicated Production Automations** |
+| **Codebase Size** | **8,000+ Lines of Rigorous Python & TypeScript** |
+
+---
+
+## 2. Visual Showcase & Interface
+
+ALOA V3 features a dark, responsive user interface designed for developers and power users.
+
+<div align="center">
+  <table>
+    <tr>
+      <td width="33%" align="center">
+        <img src="./assets/screenshots/debugging.png" alt="Autonomous Code Healer" />
+        <br />
+        <strong>Autonomous Code Healer</strong>
+        <br />
+        <em>Local & cloud real-time diagnostic engine</em>
+      </td>
+      <td width="33%" align="center">
+        <img src="./assets/screenshots/deployment.png" alt="Cloud Deployment & Pipeline" />
+        <br />
+        <strong>Multi-Cloud Pipeline</strong>
+        <br />
+        <em>Vercel, Render & GitHub continuous shipping</em>
+      </td>
+      <td width="33%" align="center">
+        <img src="./assets/screenshots/productivity.png" alt="AI Productivity Console" />
+        <br />
+        <strong>Intelligence & Productivity Hub</strong>
+        <br />
+        <em>YouTube Notes, Resume ATS & Trend Radar</em>
+      </td>
+    </tr>
+  </table>
+</div>
+
+---
+
+## 3. Hybrid Architecture & How It Works
+
+ALOA V3 operates on a **Zero-Trust Hybrid Architecture**. Traditional web apps cannot access a user's local operating system due to browser sandbox restrictions. ALOA solves this by combining a modern cloud interface with an encrypted, outbound WebSocket tunnel to a lightweight Windows Companion Agent.
+
+```mermaid
+flowchart TB
+    subgraph CloudLayer["☁️ Cloud & Edge Infrastructure"]
+        Frontend["🌐 Vercel Edge\nNext.js 14 App Router\n(aloav3.com)"]
+        Backend["⚡ Render Cloud Service\nFastAPI Server\n(api.aloav3.com)"]
+    end
+
+    subgraph AIBackbone["🧠 Multi-Model AI Resilient Backbone"]
+        Groq["⚡ Groq Llama 3.3 (Sub-second Intent)"]
+        Gemini["💎 Google Gemini 2.5 Flash (Code & Multimodal)"]
+        Bedrock["🛡️ AWS Bedrock Claude (Deep Code Audit)"]
+        OpenRouter["🔄 OpenRouter (Automatic Failover)"]
+    end
+
+    subgraph LocalMachine["💻 User's Physical Windows Laptop"]
+        Companion["🛡️ ALOA Companion Agent\n(aloa_agent.exe / Python)\nZero Port-Forwarding (Outbound WSS)"]
+        OS["⚙️ Windows OS Core\n(PowerShell, Winget, FileSystem, Processes)"]
+    end
+
+    Frontend -- "HTTPS / REST / SSE Stream" --> Backend
+    Backend <--> AIBackbone
+    Companion -- "Encrypted WSS Handshake (Port 443)\n6-Char Ephemeral Pairing" --> Backend
+    Companion --> OS
+```
+
+### 3.1 Web Frontend Architecture (Next.js 14)
+- **App Router & Server-Side Rendering (SSR):** Fast initial page delivery with client-side state hydration.
+- **Pure CSS Performance:** Completely free of heavy runtime animation dependencies (zero SSR hydration mismatch; 43 kB lighter client bundle).
+- **Dual Dynamic Theme Detection:** Seamless automatic navigation contrast (light charcoal palette on landing hero; deep navy `#070b14` on technical modules).
+- **Reactive Streaming:** Consumes native `text/event-stream` (Server-Sent Events) for real-time log terminal output, progress bars, and live diff trees.
+
+### 3.2 Cloud Backend Architecture (FastAPI & SSE)
+- **Asynchronous Execution:** Non-blocking endpoints powered by `asyncio` and `uvicorn`, routing compute-intensive jobs to background thread pools.
+- **Resilient AI Key Rotation:** Automatic fallback across API keys and providers (Groq $\rightarrow$ Gemini $\rightarrow$ OpenRouter $\rightarrow$ Bedrock) when rate limits ($429$) or quotas are triggered.
+- **Decoupled Architecture:** Core logic cleanly separated into `features/feature_X/core.py`, making every module independently testable.
+
+### 3.3 Windows Companion Agent Architecture
+- **No Port Forwarding Required:** Establishes an *outbound* secure WebSocket connection (`wss://api.aloav3.com/ws/agent`) directly to the backend over standard HTTPS port 443.
+- **Ephemeral 6-Character Pairing:** Generates a secure, 5-minute time-to-live (TTL) pairing code (e.g., `K8X2M9`) rendered in a clean desktop widget.
+- **Local Fallback Mode:** When running directly on the local machine (`http://localhost:3000`), ALOA automatically auto-detects the host system (`platform.node()`) without requiring any manual pairing steps.
+
+### 3.4 Security & Zero-Trust Governance
+- 🔒 **Air-Gapped Credentials:** Sensitive tokens (GitHub PATs, Vercel/Render keys) are held strictly on the client or masked in local configs; they are never permanently stored on backend databases.
+- 🛡️ **Interactive Human-in-the-Loop Confirmation:** High-impact system actions (killing system processes, installing software, overwriting source files) require explicit user confirmation before execution.
+- 🧹 **Sandboxed Execution:** Cloud operations (like Cloud Healer) clone remote repositories into ephemeral, isolated temporary folders (`tempfile.gettempdir()`) with guaranteed teardown on session exit.
+
+---
+
+## 4. The 10 Core Automations (Deep Dive)
+
+ALOA V3 features 10 specialized autonomous modules designed for everyday utility, developer productivity, and system optimization.
 
 ```
-┌──────────────────────────────────────────────────────┐
-│                     main.py                          │
-│              Interactive CLI Hub (v2.0)               │
-│               "Select Automation [1-10]"             │
-└────────┬──────────┬──────────┬──────────┬────────────┘
-         │          │          │          │
-    ┌────▼────┐ ┌───▼───┐ ┌───▼───┐ ┌───▼────┐
-    │Feature 1│ │Feat.2 │ │Feat.3 │ │  ...   │   × 10
-    │ core.py │ │core.py│ │core.py│ │        │
-    │runner.py│ │run.py │ │run.py │ │        │
-    └─────────┘ └───────┘ └───────┘ └────────┘
-         │
-   ┌─────▼─────────────────────────────────────┐
-   │         AI Backend Layer                   │
-   │  Groq · Gemini · OpenRouter · AWS Bedrock  │
-   │     (Auto-fallback on rate-limit/block)     │
-   └────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                           THE 10 ALOA V3 AUTOMATIONS                            │
+├─────────────────────┬───────────────────────────┬───────────────────────────────┤
+│ 01. App Manager     │ 04. YouTube Smart Notes   │ 07. Cloud Healer              │
+│ 02. System Doctor   │ 05. Exam Pilot            │ 08. Auto-Deployer (In Pipeline│
+│ 03. Attendance Auto │ 06. Code Healer           │ 09. Resume Engine             │
+│                     │                           │ 10. ALOA Radar                │
+└─────────────────────┴───────────────────────────┴───────────────────────────────┘
 ```
 
-| Metric | Value |
-|--------|-------|
-| Total Python Files | 33 |
-| Total Lines of Code | **8,000+** |
-| Automations | **10** |
-| AI Providers | 5 (Groq, Gemini, OpenRouter, Bedrock, Groq direct) |
-| API Keys Used | 10 distinct keys with rotation |
+---
+
+### Feature 01: App Manager
+> **"Open Spotify" / "Install VLC" / "Remove Chrome"**
+
+App Manager translates natural language (English or Hinglish) into concrete Windows operating system package management actions.
+
+```mermaid
+flowchart LR
+    A["User Command\n'Download VS Code'"] --> B["Groq Llama 3.3\nIntent Parser"]
+    B --> C{"Action Type"}
+    C -->|"Open"| D["4-Tier PowerShell Launcher\nStart Menu → AppxPackage → Path"]
+    C -->|"Install"| E["Winget Package Manager\nSilent Background Execution"]
+    C -->|"Uninstall"| F["Winget Silent Uninstall"]
+    C -->|"Close"| G["Taskkill Safe Process Shutdown"]
+```
+
+- **4-Tier Smart Launcher:** 
+  1. Searches Windows Start Menu `.lnk` shortcuts.
+  2. Searches modern Windows Store apps via `Get-AppxPackage`.
+  3. Direct binary execution via `Start-Process`.
+  4. Scans canonical installation folders (`C:\Program Files`, `AppData`).
+- **Hands-Free Installation:** Executes `winget install <App> -e --silent --accept-package-agreements` and auto-opens the software as soon as installation finishes.
 
 ---
 
-## 📋 The 10 Automations — Overview
+### Feature 02: System Doctor
+> **Real-time Vitals, Military-Grade Process Killer & Automated Junk Cleaner**
 
-| # | Automation Name | One-Line Description |
-|---|-----------------|---------------------|
-| 1 | **App Manager** | Open, install, or uninstall any app using natural language |
-| 2 | **System Doctor** | AI-powered health dashboard + junk cleaner + process killer |
-| 3 | **Attendance Automator** | Auto-fill Excel attendance sheets in seconds |
-| 4 | **YouTube Note Generator** | Convert any YouTube video into structured PDF notes |
-| 5 | **Exam Pilot** | AI reads on-screen quiz questions and auto-clicks answers |
-| 6 | **Code Healer** | Autonomous local code debugger — scan, run, fix, loop |
-| 7 | **Cloud Healer** | AI agent for debugging live GitHub repos remotely |
-| 8 | **Auto-Deployer** | One-command project deployment to Vercel / Render via GitHub |
-| 9 | **Resume Engine** | Generate professional resumes with ATS scoring |
-| 10 | **ALOA Radar** | Personalized daily intelligence brief from 6+ live sources |
-
----
-
-# 🔧 Automation 1 — App Manager
-
-> *"Open Instagram" → ALOA opens Instagram in under 2 seconds.*
-
-### What It Does
-
-The App Manager lets you **open**, **install**, **uninstall**, or **kill** any application on Windows using **plain English or Hinglish** commands. An LLM translates your intent into the exact system command, and a multi-strategy PowerShell launcher finds and opens any app.
-
-### How It Works — Flow
+An intelligent Windows diagnostic health monitor that pinpoints runaway processes and frees gigabytes of cluttered disk space.
 
 ```mermaid
 flowchart TD
-    A["User says: 'Open Spotify'"] --> B["LLM (Groq/OpenRouter) generates system command"]
-    B --> C{"Command type?"}
-    C -->|"start X"| D["4-Strategy PowerShell Launcher"]
-    C -->|"winget install"| E["Install via Winget + Auto-Open"]
-    C -->|"winget uninstall"| F["Uninstall silently"]
-    C -->|"taskkill"| G["Kill process"]
-    D --> D1["1. Search Start Menu .lnk files"]
-    D1 -->|"not found"| D2["2. Search AppxPackage (Store apps)"]
-    D2 -->|"not found"| D3["3. Direct Start-Process"]
-    D3 -->|"not found"| D4["4. Search common install paths"]
-    D4 --> H["✅ App Opened / ❌ Not Found"]
+    Scan["System Scan Triggered"] --> Vitals["Collect Metrics: CPU %, RAM %, Disk %"]
+    Vitals --> Procs["Analyze Top 5 Memory Consuming Processes"]
+    Procs --> Junk["Audit Temp Directories & Recycle Bin"]
+    Junk --> Output["Stream Real-time Health Telemetry to Dashboard"]
+    Output --> Action{"User Action"}
+    Action -->|"Kill"| Kill["Stop Runaway PID safely"]
+    Action -->|"Clean"| Clean["Purge Temp Files & Windows Cache"]
 ```
 
-### Example
-
-```
-User: "Download VLC"
-LLM Output: winget install "VLC media player" -e --silent --accept-package-agreements
-→ VLC installs silently
-→ ALOA auto-opens VLC after install
-```
-
-```
-User: "Instagram band kar do"  (Hinglish: close Instagram)
-LLM Output: taskkill /IM Instagram.exe /F
-→ Instagram process killed
-```
-
-### How to Run
-
-```bash
-python main.py
-# Select [1] App Manager
-# Type: "Open Chrome" or "Download VS Code"
-```
+- **Telemetry Tracking:** Monitors CPU usage across all logical cores, virtual RAM allocations, and disk drive capacities.
+- **Intelligent Impact Classification:** Flags processes dynamically as `Normal`, `Moderate`, or `Critical` based on active memory footprints.
+- **Safe Junk Purge:** Safely sweeps `%TEMP%`, `C:\Windows\Temp`, and browser cache trees with detailed space-freed audit logging.
 
 ---
 
-# 🏥 Automation 2 — System Doctor
+### Feature 03: Attendance Automator
+> **Mark Entire Class Attendance in 30 Seconds**
 
-> *AI-diagnosed health checks with a tactical military-style dashboard.*
+A specialized institutional tool for educators, professors, and managers that automates Excel spreadsheet attendance registers.
 
-### What It Does
+```mermaid
+flowchart LR
+    Excel["Upload .xlsx Sheet"] --> Date["Select Date"]
+    Date --> Absentees["Enter Absentee Roll Numbers\n(e.g., '12, 18, 45, 52')"]
+    Absentees --> Engine["OpenPyXL Automation Engine\n(Matches Student Records)"]
+    Engine --> Update["Marks 'P' for Present & 'A' for Absent"]
+    Update --> Download["Download Updated Attendance Register"]
+```
 
-System Doctor performs **real-time system health scans**, displays CPU/RAM usage with impact analysis, identifies resource-hogging processes, cleans system junk, and can **kill specific processes** — all through AI-driven natural language commands.
+- **Smart Column Detection:** Parses date headers across diverse Excel formats without breaking formulas or existing styling.
+- **Inverse Absentee Logic:** Automatically marks the entire roster as `Present` (P) while rapidly applying `Absent` (A) exclusively to listed absentee roll numbers.
+- **Formula Integrity Preservation:** Preserves existing macros, formatting, and total calculation columns.
 
-### How It Works — Flow
+---
+
+### Feature 04: YouTube Smart Notes
+> **Instant Lecture Video $\longrightarrow$ Structured Study Guide + Formatted PDF**
+
+Converts multi-hour educational YouTube videos into comprehensive, professor-grade markdown study notes and shareable PDFs.
 
 ```mermaid
 flowchart TD
-    A["User: 'check health'"] --> B["AI Brain decodes intent → JSON"]
-    B --> C{"Intent?"}
-    C -->|CHECK_HEALTH| D["psutil scans CPU/RAM/Processes"]
-    D --> E["Top 5 processes ranked by memory"]
-    E --> F["AI Writer generates one-liner advice"]
-    F --> G["Render Tactical Grid Dashboard"]
-    C -->|KILL_PROCESS| H["Extract target process"]
-    H --> I["psutil kills matching processes"]
-    C -->|CLEAN_JUNK| J["Audit temp folder size"]
-    J --> K["User confirms → shutil.rmtree + Clear-RecycleBin"]
+    URL["Paste YouTube Video URL"] --> Extract["Extract Video ID"]
+    Extract --> Transcript{"Captions Available?"}
+    Transcript -->|"Yes"| Fetch["youtube-transcript-api v1.x"]
+    Transcript -->|"No"| Multimodal["Gemini 2.5 Flash Native Video Multimodal Stream"]
+    Fetch --> AI["Expert Professor Prompting\n(Core Concepts, Breakdown, Formulas, Summary)"]
+    Multimodal --> AI
+    AI --> Markdown["Generate Clean Structured Markdown (.md)"]
+    Markdown --> PDF["FPDF2 Engine\n(Custom Title Banner, Colored Sections, Bullet Glyphs)"]
+    PDF --> Save["Archive to YouTube Notes History"]
 ```
 
-### Dashboard Output Example
-
-```
-╔════════════════════════════════════════════════════════════╗
-║  ⚡ ALOA SYSTEM OVERWATCH              [ STATUS: ONLINE 🟢 ]  ║
-╚════════════════════════════════════════════════════════════╝
-     🕒 TIME: 02:45 PM
-
-  [ SYSTEM VITALS ]
-  ▰▰▰▰▰▰▱▱▱▱▱▱▱▱▱ CPU : 35%  (Stable)
-  ▰▰▰▰▰▰▰▰▰▱▱▱▱▱▱ RAM : 62%  (Stable)
-
-  [ TOP RESOURCE CONSUMERS ]
-   PID     | PROCESS NAME          | MEMORY   | IMPACT
-   3412    | Chrome                | 1.8 GB   | 🔥 CRITICAL
-   5820    | Code                  | 512 MB   | 🔸 MODERATE
-   2891    | Spotify               | 245 MB   | 🔹 NORMAL
-
-  💡 INTEL: System is stable. Chrome is your biggest memory hog.
-```
-
-### How to Run
-
-```bash
-python main.py
-# Select [2] System Doctor
-# Type: "check health" / "kill chrome" / "clean junk"
-```
+- **Dual-Stream Transcript Engine:** Fetches standard captions; if disabled, falls back to direct Gemini 2.5 Flash multimodal video understanding.
+- **Key Rotation Protection:** Rotates multiple Google Gemini API keys to bypass quota limitations on long video transcripts.
+- **Publication-Ready PDF Generation:** Built-in PDF generation with custom title banners, Latin-1 safe emoji translation, and section-themed color accents.
 
 ---
 
-# 🎓 Automation 3 — Attendance Automator
+### Feature 05: Exam Pilot
+> **On-Screen Optical Character Recognition & Autonomous Quiz Solver**
 
-> *30 seconds to mark attendance for an entire class.*
+An on-screen computer vision automation tool that reads multiple-choice questions from active quiz windows and marks correct answers.
 
-### What It Does
+```mermaid
+flowchart LR
+    Capture["MSS Screen Capture\n(Target Region)"] --> Preprocess["Grayscale & Contrast Thresholding"]
+    Preprocess --> OCR["Tesseract OCR Engine\n(Text & Option Extraction)"]
+    OCR --> AI["Gemini Flash Prompting\n(Selects Best Answer Option)"]
+    AI --> Click["PyAutoGUI Sub-pixel Cursor Movement\n(Clicks Option Radio/Checkbox)"]
+    Click --> Failsafe{"Mouse in Corner?"}
+    Failsafe -->|"No"| Capture
+    Failsafe -->|"Yes"| Stop["Emergency Failsafe Shutdown"]
+```
 
-Loads an Excel attendance sheet, displays student list, lets you mark absentees by typing **last 4 digits of enrollment or names**, and auto-saves with date-stamped columns — `P` (green) for present, `ABSENT` (red) for absent.
+- **High-Precision Image Preprocessing:** Cleans and sharpens quiz UI captures to maximize OCR text recognition accuracy.
+- **Fail-Safe Mechanism:** Built with PyAutoGUI corner-throw fail-safes so users retain full emergency control.
 
-### How It Works — Flow
+---
+
+### Feature 06: Code Healer
+> **Point, Run, Diagnose, Fix, Diff & Auto-Apply**
+
+An autonomous local software debugging agent that navigates project folders, detects errors, and writes deterministic code patches.
 
 ```mermaid
 flowchart TD
-    A["User opens file dialog → selects .xlsx"] --> B["pandas reads Enrollment + Names"]
-    B --> C["Display student list in 3-column grid"]
-    C --> D["User enters date (default: today)"]
-    D --> E["User types: '4001 4005 Smith'"]
-    E --> F["Fuzzy match against enrollment & names"]
-    F --> G{"Confirm / Add More / Reset?"}
-    G -->|Confirm| H["openpyxl writes P/ABSENT with colors"]
-    H --> I["✅ Excel saved with date column"]
-    G -->|Add More| E
-    G -->|Reset| E
+    Select["Select Local Project Folder"] --> Scan["File Tree & Dependency Discovery"]
+    Scan --> AutoCmd["Auto-Detect Run Command\n(npm run dev, pytest, python main.py)"]
+    AutoCmd --> Exec["Subprocess Run & Stderr Capture"]
+    Exec --> Result{"Execution Success?"}
+    Result -->|"Pass"| Green["Report Build Green ✅"]
+    Result -->|"Fail"| Error["Extract Full Traceback & Context"]
+    Error --> AI["Gemini 2.5 Flash Agentic Analysis"]
+    AI --> Patch["Generate File Patch with Strict Delimiters"]
+    Patch --> Diff["Compute Unified Diff (orig vs fix)"]
+    Diff --> Approval{"User Approves Diff?"}
+    Approval -->|"Yes"| Apply["Create .bak Backup & Overwrite Code"]
+    Apply --> AutoCmd
 ```
 
-### Example
-
-```
-File: Class_A_2026.xlsx
-Date: 22/04/2026
-
-Input: "4001 4005 Rahul"
-→ Marked Absent: Priyanshu Sharma (4001), Ananya Singh (4005), Rahul Verma (4012)
-
-[C] Confirm & Save
-→ ✅ Attendance for '22/04/2026' saved successfully.
-→ Excel now has a new column "22/04/2026" with P and ABSENT values
-```
-
-### How to Run
-
-```bash
-python main.py
-# Select [3] Attendance Automator
-# A file dialog opens — select your Excel file
-# Enter date, type absentee roll numbers, confirm
-```
+- **Native Windows Folder Browser:** Uses PowerShell WinForms GUI to guarantee the folder picker always pops up in the foreground.
+- **Unified Diff Generation:** Generates syntax-highlighted hunk diffs so you can inspect additions and deletions before changing code.
+- **Automatic Rollback Backups:** Creates `.bak` safety copies before modifying any project files on disk.
 
 ---
 
-# 📝 Automation 4 — YouTube Note Generator
+### Feature 07: Cloud Healer
+> **Zero-Clone Autonomous Debugging for Remote GitHub Repositories**
 
-> *Paste a YouTube link → Get structured lecture notes as PDF.*
+Debug and patch codebases directly on GitHub without manually cloning repositories or configuring local development environments.
 
-### What It Does
+```mermaid
+flowchart LR
+    Repo["GitHub Repo URL + PAT"] --> Sandbox["Ephemeral Temp Sandbox Clone\n(/tmp/aloa_cloud/<session>)"]
+    Sandbox --> Chat["Interactive Architectural Chat"]
+    Chat --> Patch["Multi-Tier Code Modification Engine"]
+    Patch --> Syntax["Python AST Syntax & Integrity Validation"]
+    Syntax --> Diff["Inspect Visual Diff in UI"]
+    Diff --> Push["Git Commit & Remote Push to Branch"]
+    Push --> Cleanup["Sandbox Teardown on Session Delete"]
+```
 
-Extracts the transcript from any YouTube video, feeds it to **Gemini AI** as an "Expert Professor" agent, and generates structured notes in **Markdown + PDF** format — including title, core concept, detailed breakdown, workflow steps, applications, and summary.
+- **Multi-Tier Patching Precision:** Employs exact string matching, line-trimmed matching, and structural AST blocks to prevent invalid code writes.
+- **Direct Remote Push:** Pushes fixes directly to designated GitHub branches so your cloud CI/CD pipelines trigger automatically.
 
-### How It Works — Flow
+---
+
+### Feature 08: Auto-Deployer *(Pipeline Architecture)*
+> **One-Command Stack Detection, Git Push & Cloud Deployment**
+
+Automatically detects project architecture (Next.js, FastAPI, Django, Vite, Flask) and orchestrates multi-cloud deployments to Vercel and Render.
 
 ```mermaid
 flowchart TD
-    A["User pastes YouTube URL"] --> B["Extract video ID from URL"]
-    B --> C["youtube-transcript-api fetches subtitles"]
-    C --> C1{"Transcript available?"}
-    C1 -->|No| ERR["❌ Subtitles disabled"]
-    C1 -->|Yes| D["Send transcript to Gemini AI"]
-    D --> E{"Educational content?"}
-    E -->|"NOT_EDUCATIONAL"| F["⚠️ Skipped — not lecture content"]
-    E -->|Yes| G["AI generates structured Markdown notes"]
-    G --> H["Save as .md file"]
-    G --> I["Save as .pdf file via FPDF"]
-    H --> J["✅ Notes generated"]
-```
-
-### Example
-
-```
-Input: https://www.youtube.com/watch?v=dQw4w9WgXcQ
-
-🆔 Video ID: dQw4w9WgXcQ
-📥 Fetching Transcript... Success.
-📄 Transcript Length: 12,847 characters
-⏳ AI Professor is analyzing... Done. ✅
-📝 Filename: Python_OOP_Basics
-
-✅ NOTES GENERATED SUCCESSFULLY
-📂 Markdown File: Python_OOP_Basics.md
-📄 PDF Document : Python_OOP_Basics.pdf
-```
-
-### How to Run
-
-```bash
-python main.py
-# Select [4] YouTube Note Generator
-# Paste any YouTube educational video link
-# Enter a filename → .md and .pdf are generated
+    Folder["Project Directory"] --> Inspect["Inspect Signatures: package.json, requirements.txt"]
+    Inspect --> Plan["Generate Deployment Plan\n(Frontend → Vercel, Backend → Render)"]
+    Plan --> GitInit["Initialize Local Git & Push to GitHub"]
+    GitInit --> DeployVercel["Trigger Vercel Production Build"]
+    GitInit --> DeployRender["Provision Render Web Service"]
+    DeployVercel & DeployRender --> Monitor["Track Live Build & Return Production URLs"]
 ```
 
 ---
 
-# 🤖 Automation 5 — Exam Pilot
+### Feature 09: Resume Engine
+> **Brain Dump $\longrightarrow$ ATS Scoring $\longrightarrow$ STAR Bullet Polishing $\longrightarrow$ 3 HTML/PDF Templates**
 
-> *AI reads the screen, solves the question, clicks the answer.*
+An intelligent career utility that transforms unstructured work history notes into high-scoring, ATS-optimized resumes.
 
-### What It Does
+```mermaid
+flowchart LR
+    Input["Brain Dump Notes / LinkedIn / PDF"] --> Parse["AI Profile Structured Extraction"]
+    Parse --> STAR["STAR Bullet Rewriter\n(Situation, Task, Action, Result)"]
+    STAR --> ATS["ATS Scoring Engine vs Job Description\n(Keywords & Match Rate %)"]
+    ATS --> Template["3 Built-In Responsive Templates\n• ATS Classic • Modern Tech • Executive"]
+    Template --> Export["Export Clean HTML & Formatted PDF"]
+```
 
-A semi-autonomous quiz-solving agent. It **captures your screen**, uses **Tesseract OCR** to extract the question text, sends it to **Gemini AI** to find the correct answer, **locates the answer on screen**, and **clicks it with pyautogui**. You only click "Next".
+- **STAR Method Optimization:** Automatically converts passive bullet points into impactful, metric-driven achievement statements.
+- **Job Description Gap Analysis:** Compares your resume against job descriptions, identifying missing keywords and ATS vulnerabilities.
+- **3 Responsive Templates:** Choose between `ATS Classic`, `Modern Tech`, and `Executive Minimalist` layouts.
 
-### How It Works — Flow
+---
+
+### Feature 10: ALOA Radar
+> **Personalized Daily Tech Intelligence Briefing**
+
+Aggregates breaking tech updates, framework releases, and discussions across 6+ live internet developer hubs.
 
 ```mermaid
 flowchart TD
-    A["10-second countdown → Switch to quiz tab"] --> B["mss captures full screen"]
-    B --> C["cv2 converts to grayscale + threshold"]
-    C --> D["Tesseract OCR extracts all text + coordinates"]
-    D --> E["Gemini AI solves the question → returns JSON"]
-    E --> F["Find answer text coordinates in OCR data"]
-    F --> G["pyautogui moves cursor → clicks answer"]
-    G --> H["⏳ 10s wait → User clicks 'Next'"]
-    H --> B
+    Sources["Live Scraper Engine\n• Hacker News • Dev.to • GitHub Trending\n• Reddit r/programming, r/machinelearning"] --> Raw["Aggregate Raw Posts & Discussions"]
+    Raw --> Filter["Match against User Watchlist (JSON)"]
+    Filter --> Groq["Groq Fast Llama 3.3 Synthesis"]
+    Groq --> Brief["Structured Daily Executive Intelligence Brief"]
 ```
 
-### Example
-
-```
-Screen shows: "What is the capital of France?"
-Options: A) London  B) Berlin  C) Paris  D) Madrid
-
-🧠 Solving... Done.
-💡 Answer: Paris
-🎯 Clicking at (450, 382)
-✅ Answer Clicked.
-👉 Please click 'NEXT' manually.
-```
-
-### Key Feature Details
-
-- **3-key Gemini rotation** — avoids rate limits during exam
-- **Model fallback**: `gemini-2.5-flash` → `gemini-1.5-flash`
-- **OCR coordinate mapping** — uses Tesseract's bounding box data to locate answer text on screen
-
-### How to Run
-
-```bash
-python main.py
-# Select [5] Exam Pilot
-# Press Enter → 10 second timer to switch to quiz
-# AI scans → solves → clicks in a continuous loop
-# Move mouse to corner to stop (failsafe)
-```
+- **Zero-Hallucination Scraping:** Pulls real-time feeds from Hacker News, Dev.to, GitHub Trending, and Reddit.
+- **Personalized Watchlist:** Filter topics and companies based on your custom `radar_watchlist.json`.
+- **Sub-Second Synthesis:** Synthesizes hundreds of posts into a bulleted daily briefing via Groq Llama 3.3.
 
 ---
 
-# 🛠️ Automation 6 — Code Healer
+## 5. Installation & Setup Guide
 
-> *Point it at any project folder. It reads, runs, diagnoses, and fixes bugs autonomously.*
-
-### What It Does
-
-A **full-blown AI coding agent**. Select a local project folder → ALOA scans every source file, auto-detects the language/framework, finds the entry point, runs the project, and if errors occur — it **automatically sends them to AI, gets a fix, applies it, and re-runs**. It also maintains a conversational chat for asking questions about your code.
-
-### How It Works — Flow
-
-```mermaid
-flowchart TD
-    A["Folder Explorer → Select project"] --> B["Scan all source files"]
-    B --> C["Detect project type: Python/Node/Java/Go/Rust..."]
-    C --> D["Auto-detect entry point + run command"]
-    D --> E["Load entire codebase into AI Agent's brain"]
-    E --> F{"User command?"}
-    F -->|"run"| G["Execute project (subprocess)"]
-    G --> H{"Success?"}
-    H -->|Yes| I["✅ Compiled & running!"]
-    H -->|No| J["Extract error summary"]
-    J --> K["AI diagnoses bug → generates FIX_FILE + FIXED_CODE"]
-    K --> L["Auto-apply fix + create .bak backup"]
-    L --> M["User types 'run' again to verify"]
-    F -->|"chat"| N["Chat about code → AI answers"]
-    F -->|"apply"| O["Apply last suggested fix"]
-```
-
-### Supported Languages
-
-| Language | Detection | Run Command |
-|----------|-----------|-------------|
-| Python | `requirements.txt`, `__main__` patterns | `python main.py` |
-| Node.js | `package.json` with `scripts.start` | `npm start` |
-| Java | `pom.xml`, `build.gradle` | `mvn compile` / `gradle run` |
-| C/C++ | `Makefile`, `CMakeLists.txt` | `make && ./a.out` |
-| Go | `go.mod` | `go run .` |
-| Rust | `Cargo.toml` | `cargo run` |
-| Ruby, PHP, Dart | Respective markers | Auto-detected |
-
-### Smart Features
-
-- **Dev Server Detection**: Recognizes `npm start`, `flask run`, `next dev` etc. — captures output for 30s then terminates
-- **Port Conflict Resolution**: Auto-kills processes on occupied ports
-- **False Positive Filtering**: Ignores noise like `DeprecationWarning`, `npm warn`, `error-overlay`
-- **Backup System**: Creates `.bak` files before every fix
-
-### Example
-
-```
-📂 Project: my-react-app
-📄 23 files (15.js, 4.css, 3.json, 1.html)
-🏷️  NODE
-▶️  npm start
-
-🚀 Executing: npm start...
-❌ Error: Module not found: Cannot find module './Components/Header'
-
-🧠 AI is analyzing the error...
-🤖 The import path uses incorrect casing. The actual folder is 'components' not 'Components'.
-
-💾 Fixing: src/App.js...
-✅ Fixed! Backup saved as .bak
-🔄 Type 'run' to verify.
-```
-
-### How to Run
-
-```bash
-python main.py
-# Select [6] Code Healer
-# Folder picker opens → select any project folder
-# Type "run" to execute, or chat about your code
-```
+### 📋 Prerequisites
+- **Operating System:** Windows 10 or Windows 11 (for Companion Agent & OS automations).
+- **Python:** Version `3.10.x` or `3.11.x` installed with `PATH` configured.
+- **Node.js:** Version `18.x` or `20.x` LTS.
+- **Git:** Installed on local machine.
 
 ---
 
-# ☁️ Automation 7 — Cloud Healer
+### 💻 Local Development Setup
 
-> *Debug and fix code directly on GitHub — no local clone needed.*
-
-### What It Does
-
-Give it a **GitHub repo URL + PAT token**, and ALOA clones it into a temp workspace, gives an AI agent full access to the codebase, lets you chat about bugs or request fixes, **validates Python syntax before applying changes**, uses a **3-tier diff patching engine** (exact → stripped → fuzzy), and can **push fixes directly back to GitHub**.
-
-### How It Works — Flow
-
-```mermaid
-flowchart TD
-    A["User enters GitHub repo URL + PAT"] --> B["git clone into temp folder"]
-    B --> C["Build file tree + read key files"]
-    C --> D["AI Agent gets file tree + config context"]
-    D --> E{"User request?"}
-    E -->|"Fix the bug in X"| F["AI calls READ_FILE → reads actual code"]
-    F --> G["AI generates SEARCH/REPLACE patches"]
-    G --> H["3-Tier Patch Engine"]
-    H --> H1["Tier 1: Exact string match"]
-    H1 -->|fail| H2["Tier 2: Stripped whitespace match"]
-    H2 -->|fail| H3["Tier 3: Fuzzy match (60%+ similarity)"]
-    H3 --> I["Show unified diff to user"]
-    I --> J{"Accept? [A] Accept [D] Deny"}
-    J -->|Accept| K["Write file + validate Python syntax"]
-    K --> L{"Push? [Y] Push [N] Skip"}
-    L -->|Yes| M["git add + commit + push → GitHub"]
-```
-
-### Double-Lock Permission System
-
-1. **Accept/Deny** — User reviews the diff before applying
-2. **Push/Skip** — User confirms before pushing to GitHub
-
-### Example
-
-```
-Repo: https://github.com/user/flask-api
-🔄 Cloning... Done.
-📄 12 files (8.py, 2.yml, 1.txt, 1.md)
-
-You: "The /api/users endpoint returns 500"
-
-🤖 I need to read the route file first.
-READ_FILE: routes/users.py
-[SYSTEM reads file and returns content]
-
-🤖 The issue is on line 23. You're calling `db.query()` without
-   a session context. Here's the fix:
-
-FILE: routes/users.py
-SEARCH: result = db.query(User).all()
-REPLACE: with db.session() as s: result = s.query(User).all()
-
-[A] Accept  [D] Deny → A
-✅ Patched routes/users.py
-[Y] Push  [N] Skip → Y
-✅ Successfully pushed fixes to GitHub.
-```
-
-### How to Run
-
+#### 1. Clone the Repository
 ```bash
-python main.py
-# Select [7] Cloud Healer
-# Enter GitHub repo URL + Personal Access Token
-# Chat with the agent → review diffs → push fixes
+git clone https://github.com/thepeeyushyadav/THE-ALOA.git
+cd THE-ALOA
 ```
 
----
-
-# 🚀 Automation 8 — Auto-Deployer
-
-> *Select a folder → ALOA detects the framework → pushes to GitHub → deploys to Vercel/Render → returns live URL.*
-
-### What It Does
-
-A **fully autonomous deployment pipeline**. It detects your project framework (Next.js, React, Flask, Django, Spring Boot, static HTML... 17+ frameworks), creates a GitHub repo, pushes code, deploys to the right platform (Vercel for frontend, Render for backend), and returns your **live production URL**.
-
-### How It Works — Flow
-
-```mermaid
-flowchart TD
-    A["Folder Explorer → Select project"] --> B["Framework Detection Engine"]
-    B --> B1["Check marker files: next.config.js, pom.xml, etc."]
-    B1 --> B2["Inspect package.json / requirements.txt"]
-    B2 --> B3["Auto-detect build + start commands"]
-    B3 --> C["Display Deployment Plan"]
-    C --> D["User enters GitHub PAT"]
-    D --> E["Create GitHub repo via REST API"]
-    E --> F["git init → add → commit → push"]
-    F --> G{"Deploy target?"}
-    G -->|Vercel| H["Vercel CLI (npx vercel --prod)"]
-    G -->|Render| I["Render REST API → create web service"]
-    G -->|Both| J["Full-stack: Frontend → Vercel, Backend → Render"]
-    H --> K["Fetch permanent production URL"]
-    I --> K
-    K --> L["✅ Live URL returned"]
-```
-
-### Supported Frameworks (17+)
-
-| Frontend (→ Vercel) | Backend (→ Render) |
-|--------------------|-------------------|
-| Next.js, React, Vue | Flask, Django, FastAPI |
-| Gatsby, Nuxt, Svelte | Express, Fastify, NestJS |
-| Astro, Angular | Spring Boot (Java) |
-| Static HTML/CSS/JS | Go, Rust, Ruby |
-
-### Smart Features
-
-- **Full-stack monorepo detection** — detects `client/` + `server/` folders
-- **Auto-generates `.gitignore`** if missing
-- **Env var injection** — reads `.env` files and passes to deployment
-- **Permanent URL resolution** — fetches the real `.vercel.app` URL, not temp deploy links
-
-### Example
-
-```
-📂 Project: my-portfolio
-🏷️  Framework: Next.js
-🎯 Deploy Target: Vercel
-📦 Build: npm install && npm run build
-▶️  Start: npm start
-
-🔗 GitHub: https://github.com/user/my-portfolio ✅
-🚀 Deploying to Vercel...
-✅ Live URL: https://my-portfolio-olive-three.vercel.app
-```
-
-### How to Run
-
+#### 2. Backend Environment Setup
 ```bash
-python main.py
-# Select [8] Auto-Deployer
-# Select project folder → Enter GitHub PAT → Enter Vercel/Render token
-# ALOA handles everything autonomously
-```
+# Create and activate Python virtual environment
+python -m venv .venv
+.venv\Scripts\activate
 
----
-
-# 📄 Automation 9 — Resume Engine
-
-> *Build, analyze, and generate professional resumes with 3 beautiful templates.*
-
-### What It Does
-
-A complete **AI-powered resume pipeline**: input your data via **Brain Dump** (paste raw text, LinkedIn PDF, or manual entry) → AI extracts structured profile → choose from **3 premium templates** (ATS Classic, Modern Professional, Creative Two-Column) → generate HTML/PDF → run **ATS analysis against any job description** with a match score.
-
-### How It Works — Flow
-
-```mermaid
-flowchart TD
-    A{"How to input data?"} -->|Brain Dump| B["Paste raw text / LinkedIn bio"]
-    A -->|PDF Import| C["Upload LinkedIn PDF → extract text"]
-    A -->|Manual| D["Fill each section interactively"]
-    B --> E["Gemini/OpenRouter AI extracts structured JSON"]
-    C --> E
-    D --> F["Profile stored as JSON"]
-    E --> F
-    F --> G{"Action?"}
-    G -->|Generate| H["Choose template: ATS / Modern / Creative"]
-    H --> I["Generate HTML resume → save as .html"]
-    I --> J["Try PDF conversion (WeasyPrint/browser print)"]
-    G -->|Analyze| K["Paste job description"]
-    K --> L["AI performs ATS keyword matching"]
-    L --> M["Score bar + missing keywords + recommendations"]
-    M --> N["Option: auto-add missing skills to profile"]
-    G -->|AI Rewrite| O["AI rewrites bullet points in STAR format"]
-```
-
-### Template Gallery
-
-| Template | Style | Best For |
-|----------|-------|----------|
-| 📄 ATS Classic | Single-column, clean | FAANG, Engineering |
-| 🎯 Modern Professional | Colored header, timeline | Corporate, Consulting |
-| 🎨 Creative Two-Column | Dark sidebar, skill bars | Design, Marketing |
-
-### ATS Analysis Example
-
-```
-ATS Match Score: ████████████████░░░░ 78%
-
-✅ Matching Keywords (14): Python, React, AWS, Docker, REST API...
-❌ Missing Keywords (6): Kubernetes, GraphQL, Terraform...
-
-💪 Strengths:
-   1. Strong project portfolio with quantified impact
-   2. Relevant tech stack alignment
-
-💡 Recommendations:
-   1. Add Kubernetes to skills — mentioned 3x in JD
-   2. Rewrite bullet #2 with metrics
-```
-
-### How to Run
-
-```bash
-python main.py
-# Select [9] Resume Engine
-# Choose: New Profile / Load Existing / Brain Dump / PDF Import
-# Edit sections → Generate resume → Analyze against JD
-```
-
----
-
-# 📡 Automation 10 — ALOA Radar
-
-> *Your personalized daily intelligence brief — from 6+ live sources.*
-
-### What It Does
-
-A **personalized news aggregation + AI intelligence system**. You set up your profile (tech stack, target companies, interests, subreddits, packages to track, and optionally your resume) — ALOA fetches live data from **Hacker News, GitHub Trending, Dev.to, Reddit, Google News, PyPI** — and generates a **professional 5-section AI intelligence report** tailored to you.
-
-### How It Works — Flow
-
-```mermaid
-flowchart TD
-    A["First time: Interactive profile setup"] --> B["Save watchlist to JSON"]
-    B --> C{"View Brief or Refresh?"}
-    C -->|View| D{"Cache exists for today?"}
-    D -->|Yes| E["Load from cache"]
-    D -->|No| F["Fetch all 6 sources in parallel"]
-    C -->|Force Refresh| F
-    F --> F1["Hacker News API → top stories"]
-    F --> F2["GitHub Trending → scrape trending repos"]
-    F --> F3["Dev.to API → articles matching tech stack"]
-    F --> F4["Reddit JSON API → hot posts from subreddits"]
-    F --> F5["Google News RSS → company headlines"]
-    F --> F6["PyPI API → package version updates"]
-    F1 & F2 & F3 & F4 & F5 & F6 --> G["Groq AI generates 5-section report"]
-    G --> H["Display professional intelligence report"]
-```
-
-### The 5 Report Sections
-
-| Section | Content |
-|---------|---------|
-| 📌 **Current Affairs** | Global tech/business news highlights |
-| 🔬 **Tech News** | News relevant to your specific tech stack |
-| 🚀 **Trending Tech** | What's rising fastest (from GitHub + Dev.to) |
-| 💡 **General Knowledge** | Interesting insights that broaden perspective |
-| 🎯 **Suggestions For You** | 3 actionable career suggestions based on your resume + today's data |
-
-### Optional Resume Integration
-
-If you upload your resume (PDF or paste), the AI uses it to generate hyper-personalized suggestions — e.g., "Based on your Python experience, consider contributing to the trending `langchain` repo" or "TCS announced new AI hiring — your ML skills are a strong match."
-
-### Example Output
-
-```
-  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  🧠  ALOA INTELLIGENCE REPORT  —  Priyanshu
-       April 22, 2026
-  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-  📌  CURRENT AFFAIRS
-     OpenAI announced GPT-5 pricing adjustments...
-
-  🔬  TECH NEWS
-     The Python 3.14 release candidate adds...
-
-  🚀  TRENDING TECH
-     LangGraph and CrewAI are dominating GitHub trending...
-
-  💡  GENERAL KNOWLEDGE
-     Stack Overflow's 2026 survey shows 48% of developers...
-
-  🎯  SUGGESTIONS FOR YOU
-     1. Your Flask + React stack aligns with the new Vercel
-        AI SDK — explore building an AI-powered feature.
-     2. TCS Ninja hiring is open — your profile matches...
-     3. Contribute to the trending `fastapi` repo...
-```
-
-### How to Run
-
-```bash
-python main.py
-# Select [10] ALOA Radar
-# First time: Set up profile (name, tech stack, companies, subreddits)
-# Select [1] to view brief, [2] to force refresh
-# Optionally upload resume via [4] for personalized suggestions
-```
-
----
-
-## 🔧 How to Run the Entire Project
-
-### Prerequisites
-
-```bash
-# Python 3.10+
-python --version
-
-# Install dependencies
+# Install backend dependencies
 pip install -r requirements.txt
-
-# Additional for Exam Pilot:
-# Install Tesseract OCR: https://github.com/tesseract-ocr/tesseract
 ```
 
-### API Keys Setup
-
-Create a `.env` file in the project root (copy from `.env.example`):
-
-```env
-# Main LLM (Features 1, 2)
-GROQ_API_KEY=your_groq_key
-
-# Gemini (Features 4, 6, 9)
-GEMINI_API_KEY_1=your_gemini_key_1
-GEMINI_API_KEY_2=your_gemini_key_2
-
-# Exam Pilot — 3-key rotation (Feature 5)
-GEMINI_API_KEY_F5_1=your_key
-GEMINI_API_KEY_F5_2=your_key
-GEMINI_API_KEY_F5_3=your_key
-
-# Unlimited Fallback (Features 6, 7, 8, 9)
-OPENROUTER_API_KEY=your_openrouter_key
-
-# Cloud Healer (Feature 7)
-BEDROCK_API_KEY=your_bedrock_key
-```
-
-### Launch
-
+#### 3. Frontend Environment Setup
 ```bash
-python main.py
+cd frontend
+npm install
+cd ..
 ```
 
-```
-============================================================
-      THE ALOA - Agentic AI Assistant (v2.0)
-============================================================
- System: Online | Phase 2: Intelligence Layer Active
+#### 4. Configure Environment Variables
+Create a `.env` file in the project root:
+```env
+# Multi-Model AI API Keys
+GROQ_API_KEY="your-groq-api-key"
+GEMINI_API_KEY_1="your-primary-gemini-key"
+GEMINI_API_KEY_2="your-backup-gemini-key"
+OPENROUTER_API_KEY="your-openrouter-key"
+BEDROCK_API_KEY="your-aws-bedrock-key"
 
-  Available Features:
-  [1] App Manager          [6] Code Healer
-  [2] System Doctor        [7] Cloud Healer
-  [3] Attendance Auto      [8] Auto-Deployer
-  [4] YouTube Notes        [9] Resume Engine
-  [5] Exam Pilot           [10] ALOA Radar
-  [X] Exit
+# Optional Cloud Deployment Keys
+GITHUB_PAT="ghp_yourpersonalaccesstoken"
+VERCEL_TOKEN="your-vercel-token"
+RENDER_API_KEY="rnd_yourrenderkey"
 ```
+
+#### 5. Launch Full-Stack ALOA
+Open two terminal windows:
+
+**Terminal 1 (Backend API Server):**
+```bash
+# Runs FastAPI on http://localhost:8000
+python -m uvicorn backend.server:app --port 8000 --reload
+```
+
+**Terminal 2 (Next.js Web Interface):**
+```bash
+cd frontend
+# Runs Next.js on http://localhost:3000
+npm run dev
+```
+
+Visit **`http://localhost:3000`** in your browser.
 
 ---
 
-## 🧩 Tech Stack Summary
+## 6. Deployment Architecture (Vercel & Render)
 
-| Category | Technologies |
-|----------|-------------|
-| **Language** | Python 3.10+ |
-| **AI LLMs** | Groq (Llama 3.1), Google Gemini 2.0 Flash, OpenRouter (auto model), AWS Bedrock (Claude 3.5) |
-| **AI Framework** | LangChain, LangChain-Groq, Google GenAI |
-| **Computer Vision** | OpenCV (cv2), Tesseract OCR, mss (screen capture) |
-| **GUI Automation** | pyautogui, keyboard, pyperclip |
-| **Data Processing** | pandas, openpyxl, FPDF2, PyPDF2, BeautifulSoup4 |
-| **System Control** | psutil, subprocess, PowerShell integration |
-| **Web Scraping** | requests, urllib, xml.etree (RSS parsing) |
-| **Deployment** | Git CLI, GitHub REST API, Vercel CLI, Render REST API |
-| **Config** | python-dotenv (.env management) |
+ALOA V3 is architected for continuous zero-downtime deployment:
+
+```mermaid
+flowchart LR
+    Push["git push origin development/aloa-v3"] --> GitHub["GitHub: THE-ALOA"]
+    GitHub --> Vercel["Vercel Edge Pipeline\nRoot: frontend/\nDomain: aloav3.com"]
+    GitHub --> Render["Render Web Service\nRoot: . (render.yaml)\nDomain: api.aloav3.com"]
+```
+
+- **Frontend (Vercel):** Pre-configured for Next.js App Router. Set root directory to `frontend/` and add `NEXT_PUBLIC_API_URL=https://api.aloav3.com`.
+- **Backend (Render):** Managed via `render.yaml` with automatic dependency installation from `requirements-cloud.txt` and live health checks at `/api/health`.
+- **DNS Routing:** Apex domain `aloav3.com` routed via Vercel Anycast DNS; subdomain `api.aloav3.com` mapped via CNAME to Render.
 
 ---
 
-> [!TIP]
-> **THE ALOA** is not 10 separate scripts glued together — it's **one unified agent system** where automations share utilities, AI fallback chains, and a consistent UX. Features 6, 7, and 8 share the same scanning engine. Features 1 and 2 share the same dual-model fallback. The entire system is designed for **zero single-point-of-failure** — if one API is blocked, another takes over automatically.
+## 7. Development Team & Attribution
+
+**THE ALOA V3** is developed with equal ownership and shared responsibility by three core software engineers from **Medi-Caps University, Indore (M.P.), India**.
+
+<div align="center">
+  <table>
+    <tr>
+      <!-- Piyush Solanki -->
+      <td width="33%" align="center" valign="top">
+        <img src="./assets/team/piyush-solanki.jpeg" width="160" height="160" style="border-radius: 50%; object-fit: cover; box-shadow: 0 4px 12px rgba(0,0,0,0.3);" alt="Piyush Solanki" />
+        <br />
+        <h3 style="margin-bottom: 2px;">Piyush Solanki</h3>
+        <p><strong>Full-Stack & AI Integration Developer</strong></p>
+        <p><em>Contribution: 33.33%</em></p>
+        <hr style="border: 0; border-top: 1px solid #e5e7eb; margin: 8px 0;" />
+        <p align="left" style="font-size: 12px; line-height: 1.5;">
+          🎓 <strong>Enrollment:</strong> <code>EN23CS304045</code><br />
+          🆔 <strong>Scholar No:</strong> <code>2300395</code><br />
+          📚 <strong>Program:</strong> B.Tech – CSE (AI)<br />
+          🏛️ <strong>University:</strong> Medi-Caps University<br />
+          📅 <strong>Batch:</strong> 2023 – 2027
+        </p>
+        <hr style="border: 0; border-top: 1px solid #e5e7eb; margin: 8px 0;" />
+        <p align="left" style="font-size: 12px;">
+          <strong>Assigned Core Modules:</strong><br />
+          • Feature 03: Attendance Automator<br />
+          • Feature 04: YouTube Smart Notes<br />
+          • Feature 09: Resume Engine<br />
+          • Feature 10: ALOA Radar
+        </p>
+        <div>
+          <a href="https://github.com/piyushsolanki8934"><img src="https://img.shields.io/badge/GitHub-181717?style=flat&logo=github&logoColor=white" /></a>
+          <a href="https://www.linkedin.com/in/piyush-solanki-38850b2a5/"><img src="https://img.shields.io/badge/LinkedIn-0A66C2?style=flat&logo=linkedin&logoColor=white" /></a>
+          <br />
+          <a href="mailto:solankipiyush1946@gmail.com"><img src="https://img.shields.io/badge/Email-D14836?style=flat&logo=gmail&logoColor=white" /></a>
+        </div>
+      </td>
+      <!-- Mayank Sahu -->
+      <td width="33%" align="center" valign="top">
+        <img src="./assets/team/mayank-sahu.jpeg" width="160" height="160" style="border-radius: 50%; object-fit: cover; box-shadow: 0 4px 12px rgba(0,0,0,0.3);" alt="Mayank Sahu" />
+        <br />
+        <h3 style="margin-bottom: 2px;">Mayank Sahu</h3>
+        <p><strong>System Automation & Backend Developer</strong></p>
+        <p><em>Contribution: 33.33%</em></p>
+        <hr style="border: 0; border-top: 1px solid #e5e7eb; margin: 8px 0;" />
+        <p align="left" style="font-size: 12px; line-height: 1.5;">
+          🎓 <strong>Enrollment:</strong> <code>EN23CS304037</code><br />
+          🆔 <strong>Scholar No:</strong> <code>2302374</code><br />
+          📚 <strong>Program:</strong> B.Tech – CSE (AI)<br />
+          🏛️ <strong>University:</strong> Medi-Caps University<br />
+          📅 <strong>Batch:</strong> 2023 – 2027
+        </p>
+        <hr style="border: 0; border-top: 1px solid #e5e7eb; margin: 8px 0;" />
+        <p align="left" style="font-size: 12px;">
+          <strong>Assigned Core Modules:</strong><br />
+          • Feature 01: App Manager<br />
+          • Feature 02: System Doctor<br />
+          • Feature 05: Exam Pilot
+        </p>
+        <div>
+          <a href="https://github.com/mayankksahuu"><img src="https://img.shields.io/badge/GitHub-181717?style=flat&logo=github&logoColor=white" /></a>
+          <a href="https://www.linkedin.com/in/mayank-sahu-29644a2b0/"><img src="https://img.shields.io/badge/LinkedIn-0A66C2?style=flat&logo=linkedin&logoColor=white" /></a>
+          <br />
+          <a href="mailto:mayanksahu55074@gmail.com"><img src="https://img.shields.io/badge/Email-D14836?style=flat&logo=gmail&logoColor=white" /></a>
+        </div>
+      </td>
+      <!-- Piyush Pal -->
+      <td width="33%" align="center" valign="top">
+        <img src="./assets/team/piyush-pal.jpg" width="160" height="160" style="border-radius: 50%; object-fit: cover; box-shadow: 0 4px 12px rgba(0,0,0,0.3);" alt="Piyush Pal" />
+        <br />
+        <h3 style="margin-bottom: 2px;">Piyush Pal</h3>
+        <p><strong>AI & Backend Developer</strong></p>
+        <p><em>Contribution: 33.33%</em></p>
+        <hr style="border: 0; border-top: 1px solid #e5e7eb; margin: 8px 0;" />
+        <p align="left" style="font-size: 12px; line-height: 1.5;">
+          🎓 <strong>Enrollment:</strong> <code>EN23CS304044</code><br />
+          🆔 <strong>Scholar No:</strong> <code>2302214</code><br />
+          📚 <strong>Program:</strong> B.Tech – CSE (AI)<br />
+          🏛️ <strong>University:</strong> Medi-Caps University<br />
+          📅 <strong>Batch:</strong> 2023 – 2027
+        </p>
+        <hr style="border: 0; border-top: 1px solid #e5e7eb; margin: 8px 0;" />
+        <p align="left" style="font-size: 12px;">
+          <strong>Assigned Core Modules:</strong><br />
+          • Feature 06: Code Healer<br />
+          • Feature 07: Cloud Healer<br />
+          • Feature 08: Auto-Deployer
+        </p>
+        <div>
+          <a href="https://www.piyushpal.com/"><img src="https://img.shields.io/badge/Portfolio-piyushpal.com-4F46E5?style=flat&logo=googlechrome&logoColor=white" /></a>
+          <a href="https://github.com/thepeeyushyadav"><img src="https://img.shields.io/badge/GitHub-181717?style=flat&logo=github&logoColor=white" /></a>
+          <br />
+          <a href="https://www.linkedin.com/in/piyush-pal-751067306/"><img src="https://img.shields.io/badge/LinkedIn-0A66C2?style=flat&logo=linkedin&logoColor=white" /></a>
+        </div>
+      </td>
+    </tr>
+  </table>
+</div>
+
+---
+
+### 🤝 Shared Engineering Responsibilities
+
+ALOA V3 is a tightly integrated major software engineering project. Beyond individual module assignments, all three engineers collaborated across the entire development lifecycle:
+
+| Engineering Dimension | Key Contributions Across All Developers | Ownership |
+| :--- | :--- | :---: |
+| **System Architecture Design** | Hybrid edge-to-desktop paradigm, WebSocket protocol, and device pairing handshakes | **All 3 Developers** |
+| **Code Review & Standards** | Peer code reviews, strict typing validation, and clean-code refactoring | **All 3 Developers** |
+| **End-to-End Testing** | Cross-browser compatibility, Windows OS regression tests, and stress testing | **All 3 Developers** |
+| **Security & Privacy Audits** | Safe process execution, sandboxed workspaces, and token protection | **All 3 Developers** |
+| **Documentation & Production** | System architecture diagrams, user guides, and cloud deployment pipelines | **All 3 Developers** |
+
+---
+
+## 8. Contact & Community
+
+Have questions, suggestions, or want to collaborate on ALOA V3?
+
+- 📧 **Official Project Inquiries:** [hello.aloav3@gmail.com](mailto:hello.aloav3@gmail.com)
+- 🌐 **Official Website:** [https://aloav3.com](https://aloav3.com)
+- 🐛 **Bug Reports & Issues:** [GitHub Issues](https://github.com/thepeeyushyadav/THE-ALOA/issues)
+- 💡 **Feature Requests:** [GitHub Discussions](https://github.com/thepeeyushyadav/THE-ALOA/discussions)
+
+---
+
+<div align="center">
+  <p><strong>ALOA V3 — Built with ❤️ by the Medi-Caps University Core Team.</strong></p>
+  <p>Released under the <a href="./LICENSE">MIT License</a>. © 2026 ALOA Development Team.</p>
+</div>
