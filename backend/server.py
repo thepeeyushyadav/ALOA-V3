@@ -96,6 +96,7 @@ else:
         "https://aloav3.com",
         "https://www.aloav3.com",
         "https://aloa-v3-github.vercel.app",
+        "https://aloa-v3-frontend.vercel.app",
     ]
 
 app.add_middleware(
@@ -516,6 +517,9 @@ async def system_doctor_scan(session_id: Optional[str] = None):
                 d = res.get("result", {})
                 cpu = round(d.get("cpu_pct", 0), 1)
                 ram = round(d.get("ram_pct", 0), 1)
+                disk_val = round(d.get("disk_pct", 0), 1)
+                disk_free_gb = round(d.get("disk_free_gb", 0), 1)
+                disk_free_str = f"{disk_free_gb} GB" if disk_free_gb else "N/A"
                 procs = []
                 for i, p in enumerate(d.get("top_processes", [])):
                     procs.append({
@@ -525,10 +529,20 @@ async def system_doctor_scan(session_id: Optional[str] = None):
                         "mem_label": f"{p.get('mem_mb', 0)} MB",
                         "impact": "critical" if p.get("mem_pct", 0) > 20 else ("moderate" if p.get("mem_pct", 0) > 10 else "normal")
                     })
+                cpu_status = "critical" if cpu > 85 else ("high" if cpu > 60 else "stable")
+                ram_status = "critical" if ram > 85 else ("high" if ram > 70 else "stable")
+                disk_status = "critical" if disk_val > 90 else ("high" if disk_val > 75 else "stable")
                 return {
+                    "cpu": cpu,
+                    "ram": ram,
+                    "disk": disk_val,
+                    "disk_free": disk_free_str,
+                    "cpu_status": cpu_status,
+                    "ram_status": ram_status,
+                    "disk_status": disk_status,
                     "cpu_percent": cpu,
                     "ram_percent": ram,
-                    "disk_percent": round(d.get("disk_pct", 0), 1),
+                    "disk_percent": disk_val,
                     "processes": procs,
                     "junk_label": "Ready to scan",
                     "insight": f"Live laptop vitals from {agent_info.get('hostname')}: CPU at {cpu}%, RAM at {ram}%.",
@@ -547,8 +561,12 @@ async def system_doctor_scan(session_id: Optional[str] = None):
     root_path = "C:\\" if sys.platform == "win32" else "/"
     try:
         disk = psutil.disk_usage(root_path)
+        disk_val = round(disk.percent, 1)
+        disk_free_gb = round(disk.free / (1024 ** 3), 1)
+        disk_free_str = f"{disk_free_gb} GB"
     except Exception:
-        disk = type("Disk", (), {"percent": 50})()
+        disk_val = 50.0
+        disk_free_str = "N/A"
 
     processes = []
     for i, p in enumerate(stats.get("top_apps", [])[:5]):
@@ -563,11 +581,21 @@ async def system_doctor_scan(session_id: Optional[str] = None):
 
     cpu = round(stats.get("cpu_total", 0), 1)
     ram = round(stats.get("ram_total", 0), 1)
+    cpu_status = "critical" if cpu > 85 else ("high" if cpu > 60 else "stable")
+    ram_status = "critical" if ram > 85 else ("high" if ram > 70 else "stable")
+    disk_status = "critical" if disk_val > 90 else ("high" if disk_val > 75 else "stable")
 
     return {
+        "cpu": cpu,
+        "ram": ram,
+        "disk": disk_val,
+        "disk_free": disk_free_str,
+        "cpu_status": cpu_status,
+        "ram_status": ram_status,
+        "disk_status": disk_status,
         "cpu_percent": cpu,
         "ram_percent": ram,
-        "disk_percent": getattr(disk, "percent", 0),
+        "disk_percent": disk_val,
         "processes": processes,
         "junk_label": junk.get("text", "0 MB") if isinstance(junk, dict) else "0 MB",
         "insight": f"System scan complete. CPU is {cpu}%, RAM is {ram}%.",
