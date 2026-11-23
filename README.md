@@ -2,7 +2,7 @@
 
   <img src="./assets/logo/aloa-v3-logo-dark.png" alt="ALOA V3 Logo" width="380" style="border-radius: 14px; margin-bottom: 24px;" />
 
-  # THE ALOA V3 — Autonomous Laptop Operating Agent
+  # ALOA V3 — Autonomous Laptop Operating Agent
   ### *Your Laptop. Run by an Agent.*
 
   <p align="center">
