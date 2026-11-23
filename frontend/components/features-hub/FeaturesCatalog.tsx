@@ -147,11 +147,11 @@ export default function FeaturesCatalog() {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search modules or tech..."
-              className="w-full rounded-full py-2 pl-4 pr-10 text-xs bg-white/[0.03] border border-white/10 text-neutral-300 placeholder:text-neutral-500 focus:outline-none focus:border-sky-400/50 transition-colors"
+              className="w-full rounded-full py-2 pl-4 pr-10 text-xs bg-slate-900/90 border border-slate-700/80 text-white placeholder:text-slate-400 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/40 transition-colors"
             />
             <Search
               size={14}
-              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-neutral-500"
+              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-blue-400 pointer-events-none"
             />
           </div>
         </div>

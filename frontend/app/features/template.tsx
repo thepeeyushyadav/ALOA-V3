@@ -4,20 +4,22 @@
  * /frontend/app/features/template.tsx
  *
  * Page enter animation: opacity 0→1, y 8→0, duration 0.35s.
+ * Uses pure CSS animation (no Framer Motion) to completely eliminate SSR hydration mismatch.
  */
-
-import { motion } from "framer-motion";
-import { EASE } from "@/lib/motion";
 
 export default function Template({ children }: { children: React.ReactNode }) {
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -8 }}
-      transition={{ duration: 0.35, ease: EASE }}
-    >
-      {children}
-    </motion.div>
+    <>
+      <div className="page-enter">{children}</div>
+      <style>{`
+        @keyframes pageEnter {
+          from { opacity: 0; transform: translateY(8px); }
+          to   { opacity: 1; transform: translateY(0px); }
+        }
+        .page-enter {
+          animation: pageEnter 0.35s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+        }
+      `}</style>
+    </>
   );
 }

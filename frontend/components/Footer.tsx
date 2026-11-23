@@ -1,6 +1,5 @@
 "use client";
 
-import { motion } from "framer-motion";
 import { GitFork, ExternalLink } from "lucide-react";
 
 // ── Link group data ───────────────────────────────────────────────────────────
@@ -60,12 +59,7 @@ export default function Footer() {
       className="w-full border-t border-neutral-800 pt-20 pb-10 px-6 md:px-12 lg:px-20"
       style={{ backgroundColor: "#0A0A0A" }}
     >
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true }}
-        transition={{ duration: 0.7, ease: "easeOut" }}
-      >
+      <div>
         {/* ── Top 4-column grid ─────────────────────────────────────── */}
         <div className="grid grid-cols-1 gap-10 sm:grid-cols-2 lg:grid-cols-4 lg:gap-8">
           {/* Column 1: Brand block (spans 2 units on lg via col-span-2 is not needed — 
@@ -119,7 +113,7 @@ export default function Footer() {
             © 2026 ALOA V3. All Rights Reserved.
           </p>
         </div>
-      </motion.div>
+      </div>
     </footer>
   );
 }

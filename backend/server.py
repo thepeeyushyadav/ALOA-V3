@@ -142,11 +142,18 @@ async def pair_device(req: PairDeviceRequest):
     return res
 
 @app.get("/api/device/status")
-async def device_status(session_id: str):
+async def device_status(session_id: str = ""):
     """Check if browser session has an active, connected Windows laptop."""
-    agent_info = device_manager.get_agent_for_session(session_id)
+    agent_info = device_manager.get_agent_for_session(session_id) if session_id else None
     if not agent_info:
-        return {"online": False, "message": "No agent paired with this session."}
+        import platform
+        return {
+            "online": True,
+            "agent_id": "local_direct",
+            "hostname": platform.node() or "Windows PC",
+            "os": platform.system() or "Windows",
+            "is_local": True
+        }
     return {
         "online": True,
         "agent_id": agent_info["agent_id"],
@@ -163,6 +170,8 @@ class ExecuteRequest(BaseModel):
     action_label: str    # "Open" | "Install" | "Remove" | "Close"
     app_name: str        # friendly name shown in UI
     command: str         # raw command â€” NEVER shown to user, used internally
+    session_id: Optional[str] = None
+    app_id: Optional[str] = None
 
 
 # â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -322,6 +331,7 @@ async def execute(req: ExecuteRequest):
     """
     async def stream() -> AsyncGenerator[str, None]:
         loop = asyncio.get_event_loop()
+        word_count = 0
         try:
             yield sse({"type":"step","index":0,"status":"done",
                        "message":"Request confirmed",
@@ -331,6 +341,7 @@ async def execute(req: ExecuteRequest):
             is_paired = req.session_id and bool(device_manager.get_agent_for_session(req.session_id))
 
             if is_paired:
+                assert req.session_id is not None
                 yield sse({"type":"step","index":1,"status":"active",
                            "message":"Dispatching to your laptop...",
                            "detail":"Awaiting local security approval on your computer"})
@@ -448,6 +459,18 @@ async def execute(req: ExecuteRequest):
     )
 
 
+def _format_mb(bytes_val: float) -> str:
+    mb = bytes_val / (1024 * 1024)
+    return f"{int(mb)} MB" if mb < 1024 else f"{mb / 1024:.1f} GB"
+
+def _impact(bytes_val: float) -> str:
+    mb = bytes_val / (1024 * 1024)
+    if mb > 1000:
+        return "critical"
+    if mb > 400:
+        return "moderate"
+    return "normal"
+
 @app.get("/api/system-doctor/scan")
 async def system_doctor_scan(session_id: Optional[str] = None):
     """Scan CPU, RAM, disk, top processes — dispatches to paired laptop or falls back to server metrics."""
@@ -544,6 +567,7 @@ async def system_doctor_cleanup():
     """Clean junk files â€” streams friendly SSE progress steps."""
     async def stream() -> AsyncGenerator[str, None]:
         loop = asyncio.get_event_loop()
+        word_count = 0
         try:
             yield sse({"type": "step", "index": 0, "status": "done",
                        "message": "Cleanup approved", "detail": "Starting junk removal"})
@@ -567,272 +591,6 @@ async def system_doctor_cleanup():
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no", "Connection": "keep-alive"},
     )
-
-
-# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-# FEATURE 6 â€” CODE HEALER
-# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-
-# In-memory session store: session_id â†’ ALOAAgent instance
-_ch_agents: dict[str, ALOAAgent] = {}
-
-class CHScanRequest(BaseModel):
-    folder: str
-
-class CHRunRequest(BaseModel):
-    folder: str
-    run_command: str
-    session_id: str
-
-class CHFixRequest(BaseModel):
-    folder: str
-    error_text: str
-    session_id: str
-
-class CHApplyRequest(BaseModel):
-    session_id: str
-
-class CHChatRequest(BaseModel):
-    session_id: str
-    message: str
-
-class CHRunCommandRequest(BaseModel):
-    session_id: str
-    run_command: str
-
-
-def _build_file_tree(folder: str) -> list:
-    """Build a simplified file tree for the frontend."""
-    tree = []
-    folder_name = os.path.basename(folder)
-    tree.append({"name": folder_name, "type": "dir", "depth": 0, "path": ""})
-    for root, dirs, files in os.walk(folder):
-        dirs[:] = sorted([d for d in dirs if d not in SKIP_DIRS])
-        depth = os.path.relpath(root, folder).count(os.sep) + 1
-        if depth > 3:
-            continue
-        for d in dirs:
-            rel = os.path.relpath(os.path.join(root, d), folder)
-            tree.append({"name": d, "type": "dir", "depth": depth, "path": rel})
-        for f in sorted(files):
-            ext = os.path.splitext(f)[1].lower()
-            if ext in SOURCE_EXTENSIONS:
-                rel = os.path.relpath(os.path.join(root, f), folder)
-                tree.append({"name": f, "type": "file", "depth": depth, "path": rel, "ext": ext})
-    return tree[:60]  # cap at 60 entries
-
-
-def _compute_diff(original: str, fixed: str, filename: str) -> list:
-    """Compute a unified diff between original and fixed code."""
-    import difflib
-    orig_lines = original.splitlines(keepends=True)
-    fixed_lines = fixed.splitlines(keepends=True)
-    diff = list(difflib.unified_diff(orig_lines, fixed_lines, fromfile=filename, tofile=filename, n=3))
-    result = []
-    orig_line = 0
-    fix_line = 0
-    for line in diff:
-        line = line.rstrip('\n')
-        if line.startswith('---') or line.startswith('+++'):
-            continue
-        elif line.startswith('@@'):
-            # Parse hunk header
-            import re as _re
-            m = _re.search(r'-(\d+)(?:,\d+)? \+(\d+)', line)
-            if m:
-                orig_line = int(m.group(1)) - 1
-                fix_line = int(m.group(2)) - 1
-            result.append({"type": "hunk", "text": line})
-        elif line.startswith('-'):
-            orig_line += 1
-            result.append({"type": "removed", "text": line[1:], "orig": orig_line, "fix": None})
-        elif line.startswith('+'):
-            fix_line += 1
-            result.append({"type": "added", "text": line[1:], "orig": None, "fix": fix_line})
-        else:
-            orig_line += 1
-            fix_line += 1
-            result.append({"type": "ctx", "text": line[1:] if line.startswith(' ') else line, "orig": orig_line, "fix": fix_line})
-    return result
-
-
-@app.get("/api/code-healer/browse-folder")
-async def ch_browse_folder(session_id: Optional[str] = None):
-    """If connected to ALOA Windows Agent, request folder selection from user laptop."""
-    if session_id:
-        agent_info = device_manager.get_agent_for_session(session_id)
-        if agent_info:
-            res = await device_manager.dispatch_action(session_id, "BROWSE_FOLDER", {}, timeout_sec=60)
-            if res.get("success"):
-                path = res.get("result", {}).get("path", "")
-                return {"path": path, "cancelled": not bool(path)}
-    return {"path": "", "cancelled": True, "message": "Enter your project path or connect ALOA Desktop Agent."}
-
-
-@app.post("/api/code-healer/scan")
-async def ch_scan(req: CHScanRequest):
-    """Scan a project folder and return metadata + create an agent session."""
-    import features.feature_6.core as _f6
-    # Patch wrong model name in the core module (can't modify core.py directly)
-    _f6.GEMINI_MODELS = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"]
-
-    folder = req.folder.strip()
-    if not os.path.isdir(folder):
-        raise HTTPException(status_code=400, detail=f"Folder not found: {folder}")
-
-    loop = asyncio.get_event_loop()
-    source_files = await loop.run_in_executor(None, scan_source_files, folder)
-    proj_type, default_cmd = await loop.run_in_executor(None, detect_project_type, folder)
-    run_command, entry = await loop.run_in_executor(
-        None, auto_detect_run_command, folder, source_files, proj_type, default_cmd
-    )
-    file_tree = await loop.run_in_executor(None, _build_file_tree, folder)
-
-    # Create agent session
-    session_id = uuid.uuid4().hex
-    agent = ALOAAgent(folder, source_files, proj_type, run_command or "")
-    _ch_agents[session_id] = agent
-
-    return {
-        "session_id": session_id,
-        "project_type": proj_type,
-        "file_count": len(source_files),
-        "run_command": run_command or "",
-        "entry_point": os.path.relpath(entry, folder) if entry else "",
-        "file_tree": file_tree,
-    }
-
-
-@app.post("/api/code-healer/run")
-async def ch_run(req: CHRunRequest):
-    """Run the project and stream output via SSE."""
-    folder = req.folder.strip()
-    if not os.path.isdir(folder):
-        raise HTTPException(status_code=400, detail="Folder not found")
-
-    agent = _ch_agents.get(req.session_id)
-    if agent and req.run_command:
-        agent.run_command = req.run_command
-
-    async def stream() -> AsyncGenerator[str, None]:
-        loop = asyncio.get_event_loop()
-        yield sse({"type": "step", "message": "Starting project...", "detail": f"Running: {req.run_command}"})
-        try:
-            success, stdout, stderr, is_server = await loop.run_in_executor(
-                None, execute_project, folder, req.run_command
-            )
-            combined_output = (stdout + "\n" + stderr).strip()
-            if success:
-                yield sse({"type": "success", "output": combined_output,
-                           "message": "Project ran successfully", "is_server": is_server})
-            else:
-                yield sse({"type": "error_found", "output": combined_output,
-                           "error_text": stderr.strip() or stdout.strip(),
-                           "message": "Error detected"})
-        except Exception as e:
-            yield sse({"type": "error_found", "output": "", "error_text": str(e),
-                       "message": "Failed to run project"})
-
-    return StreamingResponse(stream(), media_type="text/event-stream",
-                             headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
-
-
-@app.post("/api/code-healer/fix")
-async def ch_fix(req: CHFixRequest):
-    """Ask AI to fix the error, stream progress, return fix + diff."""
-    agent = _ch_agents.get(req.session_id)
-    if not agent:
-        raise HTTPException(status_code=404, detail="Session not found. Re-scan the project.")
-
-    async def stream() -> AsyncGenerator[str, None]:
-        loop = asyncio.get_event_loop()
-        yield sse({"type": "step", "message": "Analyzing error...", "detail": "Reading project files"})
-
-        prompt = f"""I ran the project and got this error:
-
-{req.error_text}
-
-Please analyze the error, identify the exact file and line causing it, explain what's wrong, and provide the complete fix.
-Use the FIX_FILE and FIXED_CODE format."""
-
-        try:
-            response = await loop.run_in_executor(None, agent.send_message, prompt, 'fix')
-            yield sse({"type": "step", "message": "Parsing fix...", "detail": "Extracting changes"})
-
-            fix_file, fixed_code = agent.parse_fix_from_response(response)
-
-            if not fix_file or not fixed_code:
-                yield sse({"type": "no_fix", "message": "AI explained the issue but couldn't generate a fix.",
-                           "explanation": response})
-                return
-
-            # Read original file for diff
-            fix_path = os.path.join(agent.folder_path, fix_file)
-            original_code = ""
-            if os.path.isfile(fix_path):
-                try:
-                    with open(fix_path, 'r', encoding='utf-8', errors='ignore') as f:
-                        original_code = f.read()
-                except:
-                    pass
-
-            diff = _compute_diff(original_code, fixed_code, fix_file)
-
-            # Extract explanation (text before FIX_FILE:)
-            explanation = response.split("FIX_FILE:")[0].strip()
-
-            yield sse({
-                "type": "fix_ready",
-                "fix_file": fix_file,
-                "explanation": explanation,
-                "diff": diff,
-                "message": "Fix ready",
-            })
-        except Exception as e:
-            yield sse({"type": "error", "message": "AI failed to generate fix", "detail": str(e)})
-
-    return StreamingResponse(stream(), media_type="text/event-stream",
-                             headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
-
-
-@app.post("/api/code-healer/apply")
-async def ch_apply(req: CHApplyRequest):
-    """Apply the last AI fix to the file."""
-    agent = _ch_agents.get(req.session_id)
-    if not agent:
-        raise HTTPException(status_code=404, detail="Session not found.")
-
-    loop = asyncio.get_event_loop()
-    success, message = await loop.run_in_executor(None, agent.apply_fix)
-    if not success:
-        raise HTTPException(status_code=400, detail=message)
-
-    backup_file = (agent.last_fix_file or "") + ".bak"
-    return {"success": True, "message": message, "fix_file": agent.last_fix_file,
-            "backup_file": backup_file}
-
-
-@app.post("/api/code-healer/chat")
-async def ch_chat(req: CHChatRequest):
-    """Send a chat message to the AI agent about the project."""
-    agent = _ch_agents.get(req.session_id)
-    if not agent:
-        raise HTTPException(status_code=404, detail="Session not found.")
-
-    loop = asyncio.get_event_loop()
-    reply = await loop.run_in_executor(None, agent.send_message, req.message, 'chat')
-    return {"reply": reply}
-
-
-@app.post("/api/code-healer/update-run-command")
-async def ch_update_run_command(req: CHRunCommandRequest):
-    """Update the run command for an existing session."""
-    agent = _ch_agents.get(req.session_id)
-    if not agent:
-        raise HTTPException(status_code=404, detail="Session not found.")
-    agent.run_command = req.run_command
-    return {"success": True}
-
 
 # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 # FEATURE 7 â€” CLOUD HEALER
@@ -1256,12 +1014,18 @@ try:
     _f4_core.GEMINI_MODELS = ["gemini-2.5-flash", "gemini-flash-latest"]
 
     def generate_structured_notes(transcript: str) -> str:
-        return _generate_structured_notes_orig(transcript)
+        return _generate_structured_notes_orig(transcript) or ""
 
     _F4_OK = True
 except Exception as _f4_err:
     _F4_OK = False
     print(f"[Feature 4] Import warning: {_f4_err}")
+    def get_video_id(url: str) -> Optional[str]:  # type: ignore
+        return None
+    def fetch_transcript(video_id: str) -> str:  # type: ignore
+        return "ERROR: Feature 4 dependencies missing"
+    def generate_structured_notes(transcript: str) -> str:  # type: ignore
+        return ""
 
 NOTES_DIR          = os.path.join(PROJECT_ROOT, "backend", "outputs", "youtube_notes")
 NOTES_HISTORY_FILE = os.path.join(PROJECT_ROOT, "backend", "youtube_notes_history.json")
@@ -1557,6 +1321,7 @@ async def yt_generate(req: YTNotesRequest):
 
     async def stream() -> AsyncGenerator[str, None]:
         loop = asyncio.get_event_loop()
+        word_count = 0
         try:
             # Step 0 â€” validate URL
             yield sse({"type": "step", "index": 0, "status": "active",
@@ -1757,26 +1522,35 @@ def _compute_diff(original: str, fixed: str, filename: str) -> list:
 
 @app.get("/api/code-healer/browse-folder")
 async def ch_browse_folder():
-    """Open native Windows folder picker dialog, return selected path."""
+    """Open native Windows folder picker dialog via PowerShell, return selected path."""
     import features.feature_6.core as _f6
-    # Patch wrong model name before any AI call
     _f6.GEMINI_MODELS = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"]
 
-    loop = asyncio.get_event_loop()
-    def _pick():
+    def _run_picker():
+        # Use PowerShell WinForms dialog — works even when uvicorn has no display context
+        ps_script = (
+            "Add-Type -AssemblyName System.Windows.Forms; "
+            "$d = New-Object System.Windows.Forms.FolderBrowserDialog; "
+            "$d.Description = 'Select Project Folder'; "
+            "$d.ShowNewFolderButton = $true; "
+            "$null = $d.ShowDialog(); "
+            "Write-Output $d.SelectedPath"
+        )
         try:
-            import tkinter as tk
-            from tkinter import filedialog
-            root = tk.Tk()
-            root.withdraw()
-            root.wm_attributes("-topmost", True)
-            folder = filedialog.askdirectory(title="Select Project Folder", parent=root)
-            root.destroy()
-            return folder or ""
-        except Exception:
+            res = subprocess.run(
+                ["powershell", "-WindowStyle", "Normal", "-NoProfile", "-Command", ps_script],
+                capture_output=True,
+                text=True,
+                timeout=180,
+                creationflags=subprocess.CREATE_NEW_CONSOLE if sys.platform == "win32" else 0,
+            )
+            return (res.stdout or "").strip()
+        except Exception as e:
+            print(f"[code-healer/browse-folder] Error: {e}")
             return ""
-    path = await loop.run_in_executor(None, _pick)
-    # Return empty path with 200 so frontend can handle gracefully
+
+    loop = asyncio.get_event_loop()
+    path = await loop.run_in_executor(None, _run_picker)
     return {"path": path, "cancelled": not bool(path)}
 
 
@@ -1870,7 +1644,7 @@ Use the FIX_FILE and FIXED_CODE format."""
             response = await loop.run_in_executor(None, agent.send_message, prompt, 'fix')
             yield sse({"type": "step", "message": "Parsing fix...", "detail": "Extracting changes"})
 
-            fix_file, fixed_code = agent.parse_fix_from_response(response)
+            fix_file, fixed_code = agent.parse_fix_from_response(response or "")
 
             if not fix_file or not fixed_code:
                 yield sse({"type": "no_fix", "message": "AI explained the issue but couldn't generate a fix.",
@@ -1890,7 +1664,7 @@ Use the FIX_FILE and FIXED_CODE format."""
             diff = _compute_diff(original_code, fixed_code, fix_file)
 
             # Extract explanation (text before FIX_FILE:)
-            explanation = response.split("FIX_FILE:")[0].strip()
+            explanation = (response or "").split("FIX_FILE:")[0].strip()
 
             yield sse({
                 "type": "fix_ready",
@@ -2074,28 +1848,3 @@ async def get_radar_brief(force_refresh: bool = False):
 
     brief = await loop.run_in_executor(None, radar_build_brief, watchlist, force_refresh)
     return brief or {"error": True, "message": "Could not build radar brief."}
-
-# ══════════════════════════════════════════════════════════════════
-# FEATURE 8 — AUTO-DEPLOYER API
-# ══════════════════════════════════════════════════════════════════
-class DeployAnalyzeRequest(BaseModel):
-    project_type: str = "fullstack"
-    repo_url: Optional[str] = None
-
-@app.post("/api/auto-deploy/analyze")
-async def auto_deploy_analyze(req: DeployAnalyzeRequest):
-    """Analyze deployment targets and return recommended configuration."""
-    return {
-        "success": True,
-        "framework": "Next.js + FastAPI",
-        "recommended_targets": [
-            {"target": "Vercel", "purpose": "Frontend Web Application (HTTPS)", "ready": True},
-            {"target": "Render", "purpose": "FastAPI Web Service (WSS & REST)", "ready": True}
-        ],
-        "domain": "aloav3.com",
-        "steps": [
-            "1. Deploy Frontend to Vercel (Root: frontend/)",
-            "2. Deploy Backend to Render (Start: uvicorn backend.server:app)",
-            "3. Connect domain DNS records for aloav3.com and api.aloav3.com"
-        ]
-    }

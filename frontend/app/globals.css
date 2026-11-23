@@ -9,6 +9,22 @@
   mix-blend-mode: normal !important;
 }
 
+/* ─── Hero Particle Pulse Animation (Pure CSS, 0 hydration mismatch) ─── */
+@keyframes pulseParticle {
+  0%, 100% {
+    opacity: 0.15;
+    transform: scale(0.8) translate(0, 0);
+  }
+  50% {
+    opacity: 0.75;
+    transform: scale(1.4) translate(4px, -4px);
+  }
+}
+
+.hero-particle {
+  animation: pulseParticle 4s ease-in-out infinite;
+}
+
 /* ─── Hero wrapper: full viewport on mobile, fixed height on desktop ─── */
 .app-hero-wrapper {
   min-height: 100vh;

@@ -4,7 +4,11 @@ import { useState, useEffect, useCallback } from "react";
 import { Laptop, CheckCircle2, AlertCircle, X, Download } from "lucide-react";
 import { API_BASE_URL } from "@/lib/api";
 
-export default function DeviceStatusBadge() {
+export interface DeviceStatusBadgeProps {
+  variant?: "light" | "dark";
+}
+
+export default function DeviceStatusBadge({ variant = "dark" }: DeviceStatusBadgeProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isPaired, setIsPaired] = useState(false);
   const [hostname, setHostname] = useState<string>("");
@@ -92,14 +96,22 @@ export default function DeviceStatusBadge() {
         onClick={() => setIsOpen(true)}
         className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
           isPaired
-            ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/20"
-            : "bg-white/[0.05] text-neutral-300 border border-white/10 hover:border-white/20"
+            ? variant === "light"
+              ? "bg-emerald-50 text-emerald-700 border border-emerald-300 hover:bg-emerald-100"
+              : "bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/20"
+            : variant === "light"
+              ? "bg-neutral-100 text-neutral-700 border border-neutral-300 hover:bg-neutral-200 hover:text-neutral-900"
+              : "bg-white/[0.05] text-neutral-300 border border-white/10 hover:border-white/20"
         }`}
         title="ALOA Windows Companion Connection Status"
       >
         <span
           className={`h-2 w-2 rounded-full ${
-            isPaired ? "bg-emerald-400 animate-pulse" : "bg-neutral-500"
+            isPaired
+              ? "bg-emerald-500 animate-pulse"
+              : variant === "light"
+                ? "bg-neutral-400"
+                : "bg-neutral-500"
           }`}
         />
         <Laptop size={14} />

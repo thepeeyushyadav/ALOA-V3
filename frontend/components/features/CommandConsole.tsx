@@ -411,7 +411,7 @@ export default function CommandConsole({ initialCommand = "" }: CommandConsolePr
               onChange={(e) => setInput(e.target.value)}
               disabled={isExecuting || !!pendingConfirmation}
               placeholder='Try typing: "install cursor", "launch chrome", "update vs code"...'
-              className="flex-1 bg-transparent text-sm font-mono text-white placeholder:text-neutral-600 focus:outline-none disabled:opacity-50"
+              className="flex-1 bg-transparent text-sm font-mono text-white placeholder:text-slate-400 focus:outline-none disabled:opacity-50"
             />
 
             <button

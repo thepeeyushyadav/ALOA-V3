@@ -219,7 +219,7 @@ export default function YouTubeNotesPage() {
                 onChange={e => setUrl(e.target.value)}
                 onKeyDown={e => e.key === "Enter" && handleGenerate()}
                 placeholder="https://youtube.com/watch?v=..."
-                className="flex-1 bg-white/[0.04] border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder:text-neutral-600 outline-none focus:border-sky-400/40 transition-colors"
+                className="flex-1 bg-white/[0.04] border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder:text-slate-400 outline-none focus:border-sky-400/40 transition-colors"
               />
               <button
                 onClick={() => handleGenerate()}

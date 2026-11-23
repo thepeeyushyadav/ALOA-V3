@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { motion } from "framer-motion";
 import { ArrowRight, Mail } from "lucide-react";
 
 export default function CTASection() {
@@ -30,48 +29,24 @@ export default function CTASection() {
       {/* ── Content ─────────────────────────────────────────────────── */}
       <div className="relative z-10 max-w-3xl mx-auto px-6 text-center">
         {/* Label */}
-        <motion.p
-          className="text-xs font-medium tracking-[0.3em] text-neutral-500 uppercase mb-6"
-          initial={{ opacity: 0, y: 16 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.6, ease: "easeOut" }}
-        >
+        <p className="text-xs font-medium tracking-[0.3em] text-neutral-500 uppercase mb-6">
           Get Started
-        </motion.p>
+        </p>
 
         {/* Headline */}
-        <motion.h2
-          className="text-4xl md:text-6xl lg:text-7xl font-light tracking-tight text-white leading-[1.05] mb-6"
-          initial={{ opacity: 0, y: 22 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.65, ease: "easeOut", delay: 0.1 }}
-        >
+        <h2 className="text-4xl md:text-6xl lg:text-7xl font-light tracking-tight text-white leading-[1.05] mb-6">
           Your laptop.
           <br />
           Run by an agent.
-        </motion.h2>
+        </h2>
 
         {/* Supporting line */}
-        <motion.p
-          className="text-base md:text-lg text-neutral-400 max-w-xl mx-auto mb-10"
-          initial={{ opacity: 0, y: 18 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.6, ease: "easeOut", delay: 0.2 }}
-        >
+        <p className="text-base md:text-lg text-neutral-400 max-w-xl mx-auto mb-10">
           Stop context-switching. Let ALOA execute.
-        </motion.p>
+        </p>
 
         {/* CTA Buttons */}
-        <motion.div
-          className="flex flex-col sm:flex-row items-center justify-center gap-4"
-          initial={{ opacity: 0, y: 18 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.6, ease: "easeOut", delay: 0.32 }}
-        >
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
           <Link
             href="/get-started"
             className="group relative inline-flex items-center justify-center gap-2.5 px-8 py-4 rounded-xl text-base font-semibold text-white bg-neutral-900 border border-white/20 hover:border-white/40 shadow-[0_4px_24px_-4px_rgba(255,255,255,0.15)] hover:shadow-[0_4px_32px_0_rgba(255,255,255,0.25)] hover:bg-black transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]"
@@ -90,7 +65,7 @@ export default function CTASection() {
             <Mail size={16} className="text-neutral-500" />
             <span>Connect with us</span>
           </a>
-        </motion.div>
+        </div>
       </div>
     </section>
   );

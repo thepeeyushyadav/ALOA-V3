@@ -254,7 +254,7 @@ export default function AppManagerPage() {
                 onKeyDown={e => e.key === "Enter" && handleAsk()}
                 placeholder='e.g. "Install Spotify" or "Open Chrome"'
                 disabled={uiState === "thinking"}
-                className="flex-1 bg-white/[0.04] border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder:text-neutral-600 outline-none focus:border-sky-400/40 transition-colors disabled:opacity-40"
+                className="flex-1 bg-white/[0.04] border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder:text-slate-400 outline-none focus:border-sky-400/40 transition-colors disabled:opacity-40"
               />
               <button
                 onClick={() => handleAsk()}

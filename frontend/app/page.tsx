@@ -37,7 +37,7 @@ export default function Home() {
           className="relative min-h-screen md:h-screen flex flex-col"
           style={{ zIndex: 2 }}
         >
-          <Navbar />
+          <Navbar variant="light" />
           <HeroSection />
         </div>
 

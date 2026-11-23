@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { motion } from "framer-motion";
 import { Link as LinkIcon, Mail } from "lucide-react";
 
 const providers = [
@@ -45,11 +44,11 @@ function HeroVideoPlaceholder() {
         src="/videos/men.mp4"
       />
 
-      {/* Staggered pulsing dot particles layered above the video */}
+      {/* Staggered pulsing dot particles layered above the video (Pure CSS, 0 hydration mismatch) */}
       {particles.map((p) => (
-        <motion.div
+        <div
           key={p.id}
-          className="absolute rounded-full pointer-events-none"
+          className="hero-particle absolute rounded-full pointer-events-none"
           style={{
             top: p.top,
             right: p.right,
@@ -58,18 +57,7 @@ function HeroVideoPlaceholder() {
             background: "hsla(210, 80%, 65%, 0.7)",
             willChange: "transform, opacity",
             zIndex: 2,
-          }}
-          animate={{
-            opacity: [0.15, 0.75, 0.15],
-            scale: [0.8, 1.4, 0.8],
-            x: [0, 4, -3, 0],
-            y: [0, -4, 3, 0],
-          }}
-          transition={{
-            duration: 4,
-            ease: "easeInOut",
-            repeat: Infinity,
-            delay: p.delay,
+            animationDelay: `${p.delay}s`,
           }}
         />
       ))}
