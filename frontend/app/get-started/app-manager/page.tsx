@@ -28,7 +28,9 @@ interface StepStatus {
   detail: string;
 }
 
-const API = "http://localhost:8000";
+import { API_BASE_URL } from "@/lib/api";
+
+const API = API_BASE_URL;
 
 const QUICK_PICKS = [
   "Open Chrome",

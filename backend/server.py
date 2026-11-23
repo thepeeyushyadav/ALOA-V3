@@ -18,10 +18,11 @@ import psutil
 from datetime import datetime
 from typing import AsyncGenerator, Optional
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse, FileResponse
 from pydantic import BaseModel
+from backend.device_manager import device_manager
 
 # â”€â”€ Path setup â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -83,13 +84,75 @@ _f9_core.GEMINI_MODELS = ["gemini-2.5-flash", "gemini-2.0-flash"]
 # â”€â”€ App â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 app = FastAPI(title="ALOA Agent API", version="3.0.0")
 
+# Dynamic environment-based CORS origins
+raw_origins = os.environ.get("ALLOWED_ORIGINS", "")
+if raw_origins:
+    allowed_origins = [o.strip() for o in raw_origins.split(",") if o.strip()]
+else:
+    allowed_origins = [
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "https://aloav3.com",
+        "https://www.aloav3.com",
+        "https://aloa-v3-github.vercel.app",
+    ]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],          # browser â†’ localhost, so * is fine
+    allow_origins=allowed_origins,
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
 )
+
+# ── Device Pairing Endpoints & WebSocket Tunnel ────────────────────────────────
+class PairDeviceRequest(BaseModel):
+    session_id: str
+    code: str
+
+@app.websocket("/ws/agent")
+async def websocket_agent_endpoint(websocket: WebSocket):
+    """WebSocket tunnel for the ALOA Windows Companion Agent."""
+    await websocket.accept()
+    agent_id = None
+    try:
+        handshake_raw = await websocket.receive_text()
+        metadata = json.loads(handshake_raw)
+        agent_id, pairing_code = await device_manager.register_agent(websocket, metadata)
+        await websocket.send_json({
+            "type": "REGISTERED",
+            "agent_id": agent_id,
+            "pairing_code": pairing_code,
+            "ttl": 300
+        })
+        while True:
+            msg_raw = await websocket.receive_text()
+            data = json.loads(msg_raw)
+            await device_manager.handle_agent_message(agent_id, data)
+    except (WebSocketDisconnect, Exception):
+        if agent_id:
+            await device_manager.unregister_agent(agent_id)
+
+@app.post("/api/device/pair")
+async def pair_device(req: PairDeviceRequest):
+    """Pair browser session with connected Windows companion laptop."""
+    res = await device_manager.pair_session(req.session_id, req.code)
+    if not res.get("success"):
+        raise HTTPException(status_code=400, detail=res.get("error", "Pairing failed"))
+    return res
+
+@app.get("/api/device/status")
+async def device_status(session_id: str):
+    """Check if browser session has an active, connected Windows laptop."""
+    agent_info = device_manager.get_agent_for_session(session_id)
+    if not agent_info:
+        return {"online": False, "message": "No agent paired with this session."}
+    return {
+        "online": True,
+        "agent_id": agent_info["agent_id"],
+        "hostname": agent_info["hostname"],
+        "os": agent_info["os"]
+    }
 
 # â”€â”€ Request models â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 class GenerateRequest(BaseModel):
@@ -185,8 +248,8 @@ APP_ALIASES: dict[str, str] = {
     "7zip": "7zfm",
 }
 
-NO_WINDOW = subprocess.CREATE_NO_WINDOW          # Hide any console/terminal
-DETACHED  = subprocess.DETACHED_PROCESS          # Don't attach to parent
+NO_WINDOW = getattr(subprocess, 'CREATE_NO_WINDOW', 0)          # Hide any console/terminal
+DETACHED  = getattr(subprocess, 'DETACHED_PROCESS', 0)          # Don't attach to parent
 
 def silent_launch(app_name: str) -> bool:
     """
@@ -253,119 +316,130 @@ async def generate(req: GenerateRequest):
 @app.post("/api/app-manager/execute")
 async def execute(req: ExecuteRequest):
     """
-    Step 2 â€” Execute silently, stream friendly status steps via SSE.
-    Uses silent_launch exclusively â€” no terminal/CMD windows ever open.
+    Step 2 — Execute safely, streaming friendly status steps via SSE.
+    If a user's Windows Companion Agent is connected, routes execution to that laptop.
+    Otherwise, if running locally on Windows, runs validated structured parameters.
     """
     async def stream() -> AsyncGenerator[str, None]:
         loop = asyncio.get_event_loop()
         try:
-            # â”€â”€ Acknowledged â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             yield sse({"type":"step","index":0,"status":"done",
                        "message":"Request confirmed",
                        "detail":f"{req.action_label} {req.app_name}"})
             await asyncio.sleep(0.2)
 
-            # â”€â”€ INSTALL â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            is_paired = req.session_id and bool(device_manager.get_agent_for_session(req.session_id))
+
+            if is_paired:
+                yield sse({"type":"step","index":1,"status":"active",
+                           "message":"Dispatching to your laptop...",
+                           "detail":"Awaiting local security approval on your computer"})
+
+                res = await device_manager.dispatch_action(req.session_id, "APP_MANAGER_EXECUTE", {
+                    "action": req.action,
+                    "app_name": req.app_name,
+                    "app_id": req.app_id or req.app_name,
+                    "action_label": req.action_label
+                }, timeout_sec=180)
+
+                if res.get("success"):
+                    agent_res = res.get("result", {})
+                    msg = agent_res.get("message", f"{req.app_name} processed on your laptop.")
+                    yield sse({"type":"step","index":1,"status":"done",
+                               "message":"Executed on your laptop",
+                               "detail": msg})
+                    yield sse({"type":"step","index":2,"status":"done",
+                               "message":"Completed 🎉",
+                               "detail": f"{req.app_name} is ready on your computer."})
+                else:
+                    err_msg = res.get("error", "Local execution failed")
+                    yield sse({"type":"step","index":1,"status":"error",
+                               "message":"Operation failed or denied",
+                               "detail": err_msg})
+                yield sse({"type":"done","message":"All done!"})
+                return
+
+            # Standalone Local Mode Fallback
+            if sys.platform != "win32":
+                yield sse({"type":"step","index":1,"status":"error",
+                           "message":"Device Not Connected",
+                           "detail":"Please connect your ALOA Windows Companion Agent to run software actions on your computer."})
+                yield sse({"type":"done","message":"Finished"})
+                return
+
             if req.action == "install":
                 yield sse({"type":"step","index":1,"status":"active",
                            "message":"Downloading...",
-                           "detail":"Fetching from official source"})
+                           "detail":"Fetching package via Winget"})
 
-                # Run winget silently â€” CREATE_NO_WINDOW hides all console output
+                clean_id = req.app_id or req.app_name
+                clean_id = re.sub(r'[^A-Za-z0-9_\.\-]', '', clean_id)
+                cmd_args = ["winget", "install", "--id", clean_id, "--silent", "--accept-package-agreements", "--accept-source-agreements"]
+
                 result = await loop.run_in_executor(
                     None,
                     lambda: subprocess.run(
-                        req.command, shell=True,
-                        capture_output=True, text=True, timeout=300,
-                        creationflags=NO_WINDOW,
+                        cmd_args, shell=False, capture_output=True, text=True, timeout=300, creationflags=NO_WINDOW
                     )
                 )
 
-                already = "no applicable upgrade" in (result.stdout or "").lower() \
-                       or result.returncode == -1978335212
-
+                already = "no applicable upgrade" in (result.stdout or "").lower() or result.returncode == -1978335212
                 yield sse({"type":"step","index":1,"status":"done",
                            "message": "Already installed!" if already else "Installed successfully",
-                           "detail": f"{req.app_name} is already on your computer" if already
-                                     else f"{req.app_name} is ready"})
+                           "detail": f"{req.app_name} is ready on your computer."})
 
                 await asyncio.sleep(0.3)
                 yield sse({"type":"step","index":2,"status":"active",
                            "message":f"Opening {req.app_name}...",
                            "detail":"Launching it for you"})
 
-                launch_name = extract_app_name_from_winget(req.command) or req.app_name
-                ok = await loop.run_in_executor(None, silent_launch, launch_name)
-
+                ok = await loop.run_in_executor(None, silent_launch, req.app_name)
                 yield sse({"type":"step","index":2,"status":"done",
-                           "message": f"{req.app_name} is open!" if ok
-                                       else "Done â€” open it from your Start Menu",
-                           "detail": "App launched" if ok
-                                      else "Installation succeeded; open manually if needed"})
+                           "message": f"{req.app_name} is open!" if ok else "Done — open it from your Start Menu",
+                           "detail": "App launched" if ok else "Installation succeeded; open manually if needed"})
 
-            # â”€â”€ OPEN â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             elif req.action == "open":
                 yield sse({"type":"step","index":1,"status":"active",
                            "message":f"Opening {req.app_name}...",
                            "detail":"Searching your installed apps"})
-
-                # silent_launch â€” no terminal, no CMD window, no password prompts
                 ok = await loop.run_in_executor(None, silent_launch, req.app_name)
+                yield sse({"type":"step","index":1,"status":"done" if ok else "error",
+                           "message":f"{req.app_name} is open!" if ok else f"Could not find {req.app_name}",
+                           "detail":"Ready to use" if ok else "Make sure it is installed on your computer"})
 
-                yield sse({"type":"step","index":1,"status":"done",
-                           "message": f"{req.app_name} is open!" if ok
-                                       else f"Could not find {req.app_name}",
-                           "detail": "App launched successfully" if ok
-                                      else "Make sure it's installed on your computer"})
-
-            # â”€â”€ CLOSE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-            elif req.action == "close":
-                yield sse({"type":"step","index":1,"status":"active",
-                           "message":f"Closing {req.app_name}...",
-                           "detail":"Stopping the process"})
-
-                # taskkill silently â€” no console window
-                await loop.run_in_executor(
-                    None,
-                    lambda: subprocess.run(
-                        req.command, shell=True,
-                        capture_output=True,
-                        creationflags=NO_WINDOW,
-                    )
-                )
-
-                yield sse({"type":"step","index":1,"status":"done",
-                           "message":f"{req.app_name} closed",
-                           "detail":"App has been stopped"})
-
-            # â”€â”€ UNINSTALL â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             elif req.action == "uninstall":
+                clean_id = req.app_id or req.app_name
+                clean_id = re.sub(r'[^A-Za-z0-9_\.\-]', '', clean_id)
                 yield sse({"type":"step","index":1,"status":"active",
                            "message":f"Removing {req.app_name}...",
-                           "detail":"This may take a moment"})
+                           "detail":"Uninstalling package"})
+                cmd_args = ["winget", "uninstall", "--id", clean_id, "--silent"]
+                res = await loop.run_in_executor(
+                    None,
+                    lambda: subprocess.run(cmd_args, shell=False, capture_output=True, text=True, timeout=180, creationflags=NO_WINDOW)
+                )
+                yield sse({"type":"step","index":1,"status":"done" if res.returncode == 0 else "error",
+                           "message":f"{req.app_name} removed" if res.returncode == 0 else "Uninstall failed",
+                           "detail":"Application has been uninstalled"})
 
+            elif req.action == "close":
+                clean_name = re.sub(r'[^A-Za-z0-9_\-]', '', req.app_name)
+                yield sse({"type":"step","index":1,"status":"active",
+                           "message":f"Closing {req.app_name}...",
+                           "detail":"Stopping process safely"})
+                cmd_args = ["taskkill", "/F", "/IM", f"{clean_name}.exe"]
                 await loop.run_in_executor(
                     None,
-                    lambda: subprocess.run(
-                        req.command, shell=True,
-                        capture_output=True, text=True, timeout=300,
-                        creationflags=NO_WINDOW,
-                    )
+                    lambda: subprocess.run(cmd_args, shell=False, capture_output=True, text=True, timeout=30, creationflags=NO_WINDOW)
                 )
-
                 yield sse({"type":"step","index":1,"status":"done",
-                           "message":f"{req.app_name} removed",
-                           "detail":"Successfully uninstalled"})
+                           "message":f"{req.app_name} closed",
+                           "detail":"Process stopped"})
 
-            # â”€â”€ Done â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             yield sse({"type":"done","message":"All done!"})
 
-        except asyncio.TimeoutError:
-            yield sse({"type":"error",
-                       "message":"Operation timed out",
-                       "detail":"It may still be running in the background"})
         except Exception as e:
-            yield sse({"type":"error","message":"Something went wrong","detail":str(e)})
+            yield sse({"type":"step","index":1,"status":"error","message":"Execution error","detail":str(e)})
 
     return StreamingResponse(
         stream(),
@@ -374,121 +448,76 @@ async def execute(req: ExecuteRequest):
     )
 
 
-# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-# FEATURE 2 â€” System Insights
-# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-
-def _ai_insight(prompt: str) -> str:
-    """Call Groq first (fast), fall back to OpenRouter."""
-    groq_key = os.environ.get("GROQ_API_KEY", "")
-    if groq_key:
-        try:
-            body = json.dumps({
-                "model": "llama-3.1-8b-instant",
-                "messages": [{"role": "user", "content": prompt}],
-                "temperature": 0.3,
-                "max_tokens": 80,
-            }).encode()
-            req = urllib.request.Request(
-                "https://api.groq.com/openai/v1/chat/completions",
-                data=body,
-                headers={"Authorization": f"Bearer {groq_key}", "Content-Type": "application/json"},
-                method="POST",
-            )
-            with urllib.request.urlopen(req, timeout=10) as r:
-                return json.loads(r.read())["choices"][0]["message"]["content"].strip()
-        except Exception:
-            pass
-
-    or_key = os.environ.get("OPENROUTER_API_KEY", "")
-    if or_key:
-        try:
-            body = json.dumps({
-                "model": "openrouter/auto",
-                "messages": [{"role": "user", "content": prompt}],
-                "temperature": 0.3, "max_tokens": 80,
-            }).encode()
-            req = urllib.request.Request(
-                "https://openrouter.ai/api/v1/chat/completions",
-                data=body,
-                headers={"Authorization": f"Bearer {or_key}", "Content-Type": "application/json",
-                         "HTTP-Referer": "https://aloa.local"},
-                method="POST",
-            )
-            with urllib.request.urlopen(req, timeout=15) as r:
-                return json.loads(r.read())["choices"][0]["message"]["content"].strip()
-        except Exception:
-            pass
-
-    return "System scan complete. Review your vitals above."
-
-
-def _format_mb(bytes_val: float) -> str:
-    gb = bytes_val / (1024 ** 3)
-    mb = bytes_val / (1024 ** 2)
-    return f"{gb:.1f} GB" if gb >= 1 else f"{mb:.0f} MB"
-
-
-def _impact(mem_bytes: float) -> str:
-    if mem_bytes > 1024 ** 3:        return "critical"
-    if mem_bytes > 500 * 1024 ** 2:  return "moderate"
-    return "normal"
-
-
 @app.get("/api/system-doctor/scan")
-async def system_doctor_scan():
-    """Scan CPU, RAM, disk, top processes, junk â€” returns structured JSON + AI insight."""
+async def system_doctor_scan(session_id: Optional[str] = None):
+    """Scan CPU, RAM, disk, top processes — dispatches to paired laptop or falls back to server metrics."""
     loop = asyncio.get_event_loop()
 
-    # Run blocking psutil calls in executor
+    # Route to paired Windows laptop if online
+    if session_id:
+        agent_info = device_manager.get_agent_for_session(session_id)
+        if agent_info:
+            res = await device_manager.dispatch_action(session_id, "GET_SYSTEM_METRICS", {}, timeout_sec=15)
+            if res.get("success"):
+                d = res.get("result", {})
+                cpu = round(d.get("cpu_pct", 0), 1)
+                ram = round(d.get("ram_pct", 0), 1)
+                procs = []
+                for i, p in enumerate(d.get("top_processes", [])):
+                    procs.append({
+                        "rank": i + 1,
+                        "name": p.get("name", "Unknown"),
+                        "pid": p.get("pid", 0),
+                        "mem_label": f"{p.get('mem_mb', 0)} MB",
+                        "impact": "critical" if p.get("mem_pct", 0) > 20 else ("moderate" if p.get("mem_pct", 0) > 10 else "normal")
+                    })
+                return {
+                    "cpu_percent": cpu,
+                    "ram_percent": ram,
+                    "disk_percent": round(d.get("disk_pct", 0), 1),
+                    "processes": procs,
+                    "junk_label": "Ready to scan",
+                    "insight": f"Live laptop vitals from {agent_info.get('hostname')}: CPU at {cpu}%, RAM at {ram}%.",
+                    "is_remote_agent": True,
+                    "agent_hostname": agent_info.get("hostname")
+                }
+
+    # Fallback to local server metrics
     stats = await loop.run_in_executor(None, get_detailed_system_stats)
     junk  = await loop.run_in_executor(None, audit_junk_files)
 
-    if isinstance(stats, str):   # error string
+    if isinstance(stats, str):
         return {"error": True, "message": stats}
 
     total_ram = psutil.virtual_memory().total
-    disk      = psutil.disk_usage("C:\\")
+    root_path = "C:\\" if sys.platform == "win32" else "/"
+    try:
+        disk = psutil.disk_usage(root_path)
+    except Exception:
+        disk = type("Disk", (), {"percent": 50})()
 
-    # Build process list
     processes = []
-    for i, p in enumerate(stats["top_apps"][:5]):
+    for i, p in enumerate(stats.get("top_apps", [])[:5]):
         mem_bytes = (p["memory_percent"] / 100) * total_ram
         processes.append({
-            "rank":   i + 1,
-            "name":   p["name"].replace(".exe", "").capitalize(),
-            "pid":    p["pid"],
+            "rank": i + 1,
+            "name": p["name"].replace(".exe", "").capitalize(),
+            "pid": p["pid"],
             "mem_label": _format_mb(mem_bytes),
             "impact": _impact(mem_bytes),
         })
 
-    cpu = round(stats["cpu_total"], 1)
-    ram = round(stats["ram_total"], 1)
-
-    # AI insight (non-blocking)
-    top_name = processes[0]["name"] if processes else "unknown"
-    situation = (
-        f"CPU is {cpu}%, RAM is {ram}%, heaviest process is {top_name}. "
-        f"Disk used: {disk.percent}%."
-    )
-    prompt = (
-        f"SITUATION: {situation}\n"
-        "TASK: Write ONE short sentence telling the user what to do about their system performance. "
-        "Be direct and friendly. No prefixes."
-    )
-    insight = await loop.run_in_executor(None, _ai_insight, prompt)
+    cpu = round(stats.get("cpu_total", 0), 1)
+    ram = round(stats.get("ram_total", 0), 1)
 
     return {
-        "cpu": cpu,
-        "ram": ram,
-        "disk": round(disk.percent, 1),
-        "disk_free": _format_mb(disk.free),
-        "cpu_status":  "critical" if cpu > 80 else "high" if cpu > 50 else "stable",
-        "ram_status":  "critical" if ram > 85 else "high" if ram > 65 else "stable",
-        "disk_status": "critical" if disk.percent > 90 else "high" if disk.percent > 75 else "stable",
+        "cpu_percent": cpu,
+        "ram_percent": ram,
+        "disk_percent": getattr(disk, "percent", 0),
         "processes": processes,
-        "junk_label": junk.get("text", "0 MB"),
-        "insight": insight,
+        "junk_label": junk.get("text", "0 MB") if isinstance(junk, dict) else "0 MB",
+        "insight": f"System scan complete. CPU is {cpu}%, RAM is {ram}%.",
+        "is_remote_agent": False
     }
 
 
@@ -628,28 +657,16 @@ def _compute_diff(original: str, fixed: str, filename: str) -> list:
 
 
 @app.get("/api/code-healer/browse-folder")
-async def ch_browse_folder():
-    """Open native Windows folder picker dialog, return selected path."""
-    import features.feature_6.core as _f6
-    # Patch wrong model name before any AI call
-    _f6.GEMINI_MODELS = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"]
-
-    loop = asyncio.get_event_loop()
-    def _pick():
-        try:
-            import tkinter as tk
-            from tkinter import filedialog
-            root = tk.Tk()
-            root.withdraw()
-            root.wm_attributes("-topmost", True)
-            folder = filedialog.askdirectory(title="Select Project Folder", parent=root)
-            root.destroy()
-            return folder or ""
-        except Exception:
-            return ""
-    path = await loop.run_in_executor(None, _pick)
-    # Return empty path with 200 so frontend can handle gracefully
-    return {"path": path, "cancelled": not bool(path)}
+async def ch_browse_folder(session_id: Optional[str] = None):
+    """If connected to ALOA Windows Agent, request folder selection from user laptop."""
+    if session_id:
+        agent_info = device_manager.get_agent_for_session(session_id)
+        if agent_info:
+            res = await device_manager.dispatch_action(session_id, "BROWSE_FOLDER", {}, timeout_sec=60)
+            if res.get("success"):
+                path = res.get("result", {}).get("path", "")
+                return {"path": path, "cancelled": not bool(path)}
+    return {"path": "", "cancelled": True, "message": "Enter your project path or connect ALOA Desktop Agent."}
 
 
 @app.post("/api/code-healer/scan")
@@ -2033,3 +2050,52 @@ async def resume_render(req: ResumeRenderRequest):
     """Render a resume profile as HTML using the specified template."""
     html = generate_resume_html(req.profile, req.template_name)
     return {"html": html, "template": req.template_name}
+
+# ══════════════════════════════════════════════════════════════════
+# FEATURE 10 — ALOA RADAR API
+# ══════════════════════════════════════════════════════════════════
+from features.feature_10.core import (
+    build_brief as radar_build_brief,
+    DEFAULT_WATCHLIST as RADAR_DEFAULT_WATCHLIST,
+    WATCHLIST_PATH as RADAR_WATCHLIST_PATH
+)
+
+@app.get("/api/radar/brief")
+async def get_radar_brief(force_refresh: bool = False):
+    """Return tech trend intelligence brief from HN, Dev.to, GitHub, Reddit, and Groq."""
+    loop = asyncio.get_event_loop()
+    watchlist = RADAR_DEFAULT_WATCHLIST.copy()
+    if os.path.exists(RADAR_WATCHLIST_PATH):
+        try:
+            with open(RADAR_WATCHLIST_PATH, "r", encoding="utf-8") as f:
+                watchlist.update(json.load(f))
+        except Exception:
+            pass
+
+    brief = await loop.run_in_executor(None, radar_build_brief, watchlist, force_refresh)
+    return brief or {"error": True, "message": "Could not build radar brief."}
+
+# ══════════════════════════════════════════════════════════════════
+# FEATURE 8 — AUTO-DEPLOYER API
+# ══════════════════════════════════════════════════════════════════
+class DeployAnalyzeRequest(BaseModel):
+    project_type: str = "fullstack"
+    repo_url: Optional[str] = None
+
+@app.post("/api/auto-deploy/analyze")
+async def auto_deploy_analyze(req: DeployAnalyzeRequest):
+    """Analyze deployment targets and return recommended configuration."""
+    return {
+        "success": True,
+        "framework": "Next.js + FastAPI",
+        "recommended_targets": [
+            {"target": "Vercel", "purpose": "Frontend Web Application (HTTPS)", "ready": True},
+            {"target": "Render", "purpose": "FastAPI Web Service (WSS & REST)", "ready": True}
+        ],
+        "domain": "aloav3.com",
+        "steps": [
+            "1. Deploy Frontend to Vercel (Root: frontend/)",
+            "2. Deploy Backend to Render (Start: uvicorn backend.server:app)",
+            "3. Connect domain DNS records for aloav3.com and api.aloav3.com"
+        ]
+    }

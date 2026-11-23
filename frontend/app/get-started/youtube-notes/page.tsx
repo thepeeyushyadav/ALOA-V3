@@ -5,7 +5,9 @@ import Link from "next/link";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 
-const API = "http://localhost:8000";
+import { API_BASE_URL } from "@/lib/api";
+
+const API = API_BASE_URL;
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type UIState = "idle" | "generating" | "done" | "error";

@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Search, Menu, X } from "lucide-react";
+import DeviceStatusBadge from "@/components/DeviceStatusBadge";
 
 export interface NavbarProps {
   variant?: "light" | "dark";
@@ -101,8 +102,9 @@ export default function Navbar({ variant = "light" }: NavbarProps) {
           </div>
         </div>
 
-        {/* Right: Desktop search + Mobile hamburger */}
+        {/* Right: Device status + Desktop search + Mobile hamburger */}
         <div className="flex items-center gap-3">
+          <DeviceStatusBadge />
           {/* Desktop search */}
           <div className="relative hidden md:block">
             <input

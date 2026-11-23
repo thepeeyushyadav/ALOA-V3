@@ -35,3 +35,13 @@ Thumb.db
 
 # Test data and personal profiles
 features/feature_9/profiles/
+
+# Distribution and agent build artifacts
+dist/
+build/
+*.spec
+*.pdf
+temp_cloud_workspaces/
+aloa_agent/dist/
+aloa_agent/build/
+backend/youtube_notes_history.json
