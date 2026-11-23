@@ -4,6 +4,25 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ─── Global Scrollbar Suppression (Preserves 100% scroll functionality) ─── */
+html,
+body {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE and Edge */
+}
+
+::-webkit-scrollbar {
+  display: none !important; /* Chrome, Safari, Edge, Opera */
+  width: 0px !important;
+  height: 0px !important;
+  background: transparent !important;
+}
+
+* {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
 /* ─── Custom blend mode override for hero background video ─── */
 .video-plus-darker {
   mix-blend-mode: normal !important;
