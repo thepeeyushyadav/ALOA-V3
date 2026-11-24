@@ -45,3 +45,6 @@ temp_cloud_workspaces/
 aloa_agent/dist/
 aloa_agent/build/
 backend/youtube_notes_history.json
+
+# Large video files (>100MB) - host externally, do not commit to git
+frontend/public/videos/4K ALOA V3.mp4
